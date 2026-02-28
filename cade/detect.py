@@ -73,7 +73,7 @@ def detect_drift_samples(
         )
 
         """get the MAD for each family"""
-        mad_family = get_MAD_for_each_family(dis_family, n, n_family)
+        mad_family = get_mad_for_each_family(dis_family, n, n_family)
 
         np.savez_compressed(
             training_info_for_detect_path,
@@ -125,7 +125,21 @@ def detect_drift_samples(
 
 def get_latent_representation_keras(
     dims: list[int], best_weights_file: str, x_train: np.ndarray, x_test: np.ndarray
-):
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Load a trained encoder and extract latent features (embeddings) from input data.
+
+    Args:
+        dims: List of dimensions for the autoencoder architecture.
+        best_weights_file: Path to the saved .h5 weights file.
+        x_train: Training feature vectors to be encoded.
+        x_test: Testing feature vectors to be encoded.
+
+    Returns:
+        A tuple containing:
+            - z_train (np.ndarray): Latent representation of the training data.
+            - z_test (np.ndarray): Latent representation of the testing data.
+    """
     k.clear_session()
     ae = Autoencoder(dims)
     _ae_model, encoder_model = ae.build()
@@ -141,43 +155,95 @@ def get_latent_representation_keras(
     return z_train, z_test
 
 
-def get_latent_data_for_each_family(z_train, y_train):
-    N = len(np.unique(y_train))
-    N_family = [len(np.where(y_train == family)[0]) for family in range(N)]
+def get_latent_data_for_each_family(
+    z_train: np.ndarray, y_train: np.ndarray
+) -> tuple[int, list[int], list[np.ndarray]]:
+    """
+    Groups latent representations into a list of arrays based on family labels.
+
+    Args:
+        z_train: Feature vectors in the latent space (embeddings).
+        y_train: Label array corresponding to the training samples.
+
+    Returns:
+        A tuple containing:
+            - n (int): The number of unique families found in the labels.
+            - n_family (list[int]): A list containing the count of samples
+                per family.
+            - z_family (list[np.ndarray]): A list where each element is an
+                ndarray of latent vectors belonging to that specific family.
+    """
+    n = len(np.unique(y_train))
+    n_family = [len(np.where(y_train == family)[0]) for family in range(n)]
     z_family = []
-    for family in range(N):
+    for family in range(n):
         z_tmp = z_train[np.where(y_train == family)[0]]
         z_family.append(z_tmp)
 
-    z_len = [len(z_family[i]) for i in range(N)]
+    z_len = [len(z_family[i]) for i in range(n)]
     logging.debug(f'z_family length: {z_len}')
 
-    return N, N_family, z_family
+    return n, n_family, z_family
 
 
 def get_latent_distance_between_sample_and_centroid(
-    z_family, centroids, margin, N, N_family
-):
+    z_family: list[np.ndarray],
+    centroids: list[np.ndarray],
+    _margin: float,
+    n: int,
+    n_family: list[int],
+) -> list[list[float]]:
+    """
+    Calculate Euclidean distances between family samples and their respective centroids.
+
+    Args:
+        z_family: List of arrays containing latent vectors for each family.
+        centroids: List of mean vectors (centroids) for each family.
+        _margin: The margin parameter (unused in this calculation but passed).
+        n: The number of unique families.
+        n_family: A list containing the count of samples in each family.
+
+    Returns:
+        dis_family: A nested list where dis_family[i][j] is the distance
+            of the j-th sample of the i-th family to its centroid.
+    """
     dis_family = []  # two-dimension list
 
-    for i in range(N):  # i: family index
+    for i in range(n):  # i: family index
         dis = [
-            np.linalg.norm(z_family[i][j] - centroids[i]) for j in range(N_family[i])
+            np.linalg.norm(z_family[i][j] - centroids[i]) for j in range(n_family[i])
         ]
         dis_family.append(dis)
 
-    dis_len = [len(dis_family[i]) for i in range(N)]
+    dis_len = [len(dis_family[i]) for i in range(n)]
     logging.debug(f'dis_family length: {dis_len}')
 
     return dis_family
 
 
-def get_MAD_for_each_family(dis_family, N, N_family):
+def get_mad_for_each_family(
+    dis_family: list[list[float]], n: int, n_family: list[int]
+) -> list[float]:
+    """
+    Calculate the Median Absolute Deviation (MAD) for each family's distances.
+
+    The MAD is calculated as: 1.4826 * median(|x_i - median(x)|).
+    The constant 1.4826 is used to make MAD a consistent estimator for
+    the standard deviation of a Gaussian distribution.
+
+    Args:
+        dis_family: Nested list of distances from samples to centroids per family.
+        n: The number of unique families.
+        n_family: A list containing the count of samples in each family.
+
+    Returns:
+        A list of MAD values, one for each family.
+    """
     mad_family = []
-    for i in range(N):
+    for i in range(n):
         median = np.median(dis_family[i])
         logging.debug(f'family {i} median: {median}')
-        diff_list = [np.abs(dis_family[i][j] - median) for j in range(N_family[i])]
+        diff_list = [np.abs(dis_family[i][j] - median) for j in range(n_family[i])]
         mad = 1.4826 * np.median(
             diff_list
         )  # 1.4826: assuming the underlying distribution is Gaussian
