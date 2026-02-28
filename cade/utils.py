@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from numpy.random import seed
+from scipy.optimize import linear_sum_assignment
 from tensorflow import set_random_seed
 
 os.environ['PYTHONHASHSEED'] = '0'
@@ -159,7 +160,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         '--mlp-lr', default=0.001, type=float, help='MLP classifier Adam learning rate.'
     )
-    p.add_argument('--mlp-epochs', default=50, type=int, help='MLP classifier epochs.')
+    p.add_argument('--mlp-epochs', default=50, type=int,
+                   help='MLP classifier epochs.')
     p.add_argument(
         '--mlp-dropout', default=0.2, type=float, help='MLP classifier Droput rate.'
     )
@@ -197,28 +199,26 @@ def parse_args() -> argparse.Namespace:
 def get_model_dims(
     model_name: str, input_layer_num: int, hidden_layer_num: str, output_layer_num: int
 ) -> list[int]:
-    """convert hidden layer arguments to the architecture of a model (list)
+    """
+    Convert hidden layer arguments to the architecture of a model (list).
 
-    Arguments:
-        model_name {str} -- 'MLP' or 'Contrastive AE'.
-        input_layer_num {int} -- The number of the features.
-        hidden_layer_num {str} -- The '-' connected numbers indicating the number of neurons in hidden layers.
-        output_layer_num {int} -- The number of the classes.
+    Args:
+        model_name: Name of the model ('MLP' or 'Contrastive AE').
+        input_layer_num: The number of the features.
+        hidden_layer_num: The '-' connected numbers indicating the number
+            of neurons in hidden layers.
+        output_layer_num: The number of the classes.
 
     Returns:
-        [list] -- List represented model architecture.
-    """  # noqa: E501
+        A list representing the model architecture dimensions.
+    """
     try:
-        if '-' not in hidden_layer_num:
-            dims = [input_layer_num, int(hidden_layer_num), output_layer_num]
-        else:
-            hidden_layers = [int(dim) for dim in hidden_layer_num.split('-')]
-            dims = [input_layer_num]
-            for dim in hidden_layers:
-                dims.append(dim)
-            dims.append(output_layer_num)
+        hidden_layers = [int(dim) for dim in hidden_layer_num.split('-')]
+        dims = [input_layer_num, *hidden_layers, output_layer_num]
+
         logging.debug(f'{model_name} dims: {dims}')
-    except:
+
+    except Exception:
         logging.error(f'get_model_dims {model_name}\n{traceback.format_exc()}')
         sys.exit(-1)
 
@@ -235,7 +235,7 @@ def create_parent_folder(file_path: str) -> None:
         os.makedirs(os.path.dirname(file_path))
 
 
-def redo_flag(args, path_same, path_diff) -> bool:
+def redo_flag(args: argparse.Namespace, path_same: str, path_diff: str) -> bool:
     return not ('newfamily' in args.data and os.path.exists(path_diff)) or (
         'evolve' in args.data
         and os.path.exists(path_same)
@@ -243,31 +243,57 @@ def redo_flag(args, path_same, path_diff) -> bool:
     )
 
 
-def get_cluster_acc(y_true: np.ndarray, y_pred: np.ndarray) -> float | np.ndarray:
+def get_cluster_acc(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """
-    Calculate clustering accuracy.
-    # Arguments
-        y: true labels, numpy.array with shape `(n_samples,)`
-        y_pred: predicted labels, numpy.array with shape `(n_samples,)`
-    # Return
-        accuracy, in [0,1]
+    Calculate clustering accuracy by finding the optimal permutation of labels.
+
+    Args:
+        y_true: Ground truth labels, numpy.array with shape `(n_samples,)`.
+        y_pred: Predicted labels, numpy.array with shape `(n_samples,)`.
+
+    Returns:
+        accuracy: The best matching accuracy in the range [0, 1].
     """
     y_true = y_true.astype(np.int64)
+    y_pred = y_pred.astype(np.int64)
+
     assert y_pred.size == y_true.size
-    D = max(y_pred.max(), y_true.max()) + 1
-    w = np.zeros((D, D), dtype=np.int64)
+
+    # Create the cost/weight matrix
+    d = max(y_pred.max(), y_true.max()) + 1
+    w = np.zeros((d, d), dtype=np.int64)
     for i in range(y_pred.size):
         w[y_pred[i], y_true[i]] += 1
 
-    from sklearn.utils.linear_assignment_ import linear_assignment
+    # Solve the linear assignment problem (Kuhn-Munkres algorithm)
+    # We use max() - w because linear_sum_assignment minimizes the cost
+    row_ind, col_ind = linear_sum_assignment(w.max() - w)
 
-    ind = linear_assignment(w.max() - w)
-    return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
+    # Sum the matches and divide by total samples
+    accuracy = sum(w[row_ind, col_ind]) / y_pred.size
+
+    return float(accuracy)
 
 
 def plot_confusion_matrix(
-    cm: np.ndarray, y_pred, y_true, dataset_name, newfamily, save_fig_name: str
+    cm: np.ndarray,
+    y_pred: np.ndarray,
+    y_true: np.ndarray,
+    dataset_name: str,
+    newfamily: int,
+    save_fig_name: str,
 ) -> None:
+    """
+    Plot and save a confusion matrix heatmap using seaborn.
+
+    Args:
+        cm: The confusion matrix array.
+        y_pred: Predicted labels from the classifier.
+        y_true: Ground truth labels.
+        dataset_name: Name of the dataset for conditional logic.
+        newfamily: Default index for a new family if bluehex is used.
+        save_fig_name: Full path (including filename) to save the plot.
+    """
     logging.getLogger('matplotlib.font_manager').disabled = True
     fig, ax = plt.subplots()
     ax = sns.heatmap(cm, annot=True, fmt='d', annot_kws={'size': 12})
@@ -277,6 +303,8 @@ def plot_confusion_matrix(
     elif 'IDS' in dataset_name:
         new = 3
     elif 'bluehex' in dataset_name:
+        new = newfamily
+    else:
         new = newfamily
 
     no_of_axes = len(np.unique(y_pred)) + 1

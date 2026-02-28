@@ -8,7 +8,6 @@ from timeit import default_timer as timer
 
 import numpy as np
 import tensorflow as tf
-from keras import backend as k
 from numpy.random import seed
 from tensorflow import set_random_seed
 
@@ -68,8 +67,7 @@ def main() -> None:
     logging.warning('Running with configuration:\n' + pformat(vars(args)))
     logging.getLogger('matplotlib.font_manager').disabled = True
 
-    logging.debug(
-        f'available GPUs: {k.tensorflow_backend._get_available_gpus()}')
+    logging.debug(f'available GPUs: {tf.config.list_physical_devices("GPU")}')
 
     # ----------------------------------------------- #
     # 1. Prepare the dataset                          #
@@ -131,8 +129,7 @@ def main() -> None:
             f'd{args.mlp_dropout}.h5'
         )
 
-        mlp_model_path = os.path.join(
-            saved_model_dir, args.data, mlp_model_name)
+        mlp_model_path = os.path.join(saved_model_dir, args.data, mlp_model_name)
 
         mlp_classifier = classifier.MLPClassifier(
             dims=mlp_dims, model_save_name=mlp_model_path, dropout=args.mlp_dropout
@@ -140,8 +137,7 @@ def main() -> None:
 
         # incase args.mlp_retrain = 0 while there is no Model file
         logging.debug(f'Saving MLP models to {mlp_model_path}...')
-        retrain_flag = 1 if not os.path.exists(
-            mlp_model_path) else args.mlp_retrain
+        retrain_flag = 1 if not os.path.exists(mlp_model_path) else args.mlp_retrain
         logging.debug(f'retrain? {retrain_flag}')
 
         mlp_classifier.train(
@@ -172,8 +168,7 @@ def main() -> None:
         rf_classifier = classifier.RFClassifier(rf_model_path, args.tree)
 
         # incase args.rf_retrain = 0 while there is no Model file
-        retrain_flag = 1 if not os.path.exists(
-            rf_model_path) else args.rf_retrain
+        retrain_flag = 1 if not os.path.exists(rf_model_path) else args.rf_retrain
         saved_confusion_matrix_fig_path = os.path.join(
             fig_dir, args.data, 'RF_confusion_matrix.png'
         )
@@ -308,8 +303,7 @@ def main() -> None:
         )
 
     e1 = timer()
-    logging.info(
-        f'Training contrastive autoencoder time: {(e1 - s1):.3f} seconds')
+    logging.info(f'Training contrastive autoencoder time: {(e1 - s1):.3f} seconds')
     logging.info('Training contrastive autoencoder finished')
 
     # --------------------------------------------------------- #
@@ -372,8 +366,7 @@ def main() -> None:
     name_tmp = (
         f'{args.classifier}_combined_classify_detect_results_{postfix_no_mad}.csv'
     )
-    combined_report_path = os.path.join(
-        report_dir, args.data, 'intermediate', name_tmp)
+    combined_report_path = os.path.join(report_dir, args.data, 'intermediate', name_tmp)
 
     evaluate.combine_classify_and_detect_result(
         classify_results_all_path, all_detect_path, combined_report_path

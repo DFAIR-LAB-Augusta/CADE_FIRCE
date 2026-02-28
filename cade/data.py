@@ -6,6 +6,7 @@ Functions for caching and loading data.
 
 """
 
+import argparse
 import logging
 import os
 import random
@@ -24,11 +25,13 @@ from cade.config import config
 random.seed(1)
 
 
-def load_features(dataset, newfamily, folder='data/'):
+def load_features(
+    dataset: str, newfamily: int, folder: str = 'data/'
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     logging.info('Loading ' + dataset + ' feature vectors and labels...')
     filepath = os.path.join(folder, dataset + '.npz')
     data = np.load(filepath)
-    X_train, y_train, X_test, y_test = (
+    x_train, y_train, x_test, y_test = (
         data['X_train'],
         data['y_train'],
         data['X_test'],
@@ -40,11 +43,11 @@ def load_features(dataset, newfamily, folder='data/'):
     )
 
     if 'drebin' in dataset:
-        PERSISTENT_NEW_FAMILY = 7
+        persistent_new_family = 7
     elif 'IDS' in dataset:
-        PERSISTENT_NEW_FAMILY = 3
+        persistent_new_family = 3
     elif 'bluehex' in dataset:
-        PERSISTENT_NEW_FAMILY = newfamily
+        persistent_new_family = newfamily
     else:
         logging.error(f'dataset {dataset} not supported')
         sys.exit(-4)
@@ -62,7 +65,7 @@ def load_features(dataset, newfamily, folder='data/'):
     y_test_prime = np.zeros(shape=y_test.shape, dtype=np.int32)
     for i in range(len(y_test)):
         if y_test[i] not in y_train:  # new family
-            y_test_prime[i] = PERSISTENT_NEW_FAMILY
+            y_test_prime[i] = persistent_new_family
         else:
             y_test_prime[i] = mapping[y_test[i]]
 
@@ -70,10 +73,10 @@ def load_features(dataset, newfamily, folder='data/'):
     logging.debug(f'after relabeling training: {Counter(y_train_prime)}')
     logging.debug(f'after relabeling testing: {Counter(y_test_prime)}')
 
-    return X_train, y_train_prime, X_test, y_test_prime
+    return x_train, y_train_prime, x_test, y_test_prime
 
 
-def prepare_dataset(args) -> None:
+def prepare_dataset(args: argparse.Namespace) -> None:
     if 'drebin' in args.data:
         prepare_drebin_data(args.data, newfamily=args.newfamily_label)
 

@@ -260,7 +260,7 @@ def build_global_exp_model_for_each_closest_family(
             y_in = np.zeros(shape=(z_in.shape[0],))
             y_drift = np.ones(shape=(z_drift.shape[0],))
 
-            """ build a shallow classifier to distinguish in-distribution and drift samples """
+            """ build a shallow classifier to distinguish in-distribution and drift samples """  # noqa: E501
             logging.info(
                 f'[explantion] build a global classifier for family-{family}...'
             )
@@ -286,7 +286,7 @@ def build_global_exp_model_for_each_closest_family(
                 f'[explantion] build a global classifier for family-{family} finished'
             )
 
-            """ combine the encoder and shallow MLP classifier (approximation model) as the final model to explain """
+            """ combine the encoder and shallow MLP classifier (approximation model) as the final model to explain """  # noqa: E501
             final_model_path = os.path.join(
                 saved_exp_classifier_folder, f'final_model_family_{family}.h5'
             )
@@ -451,16 +451,16 @@ def build_target_classifier(
     logging.debug(f'Saving explanation MLP models to {model_save_path}...')
     retrain_flag = 1 if not os.path.exists(model_save_path) else 0
 
-    X = np.vstack((z_in, z_drift))
+    x = np.vstack((z_in, z_drift))
     y = np.hstack((y_in, y_drift))
 
-    logging.debug(f'X.shape: {X.shape}')
+    logging.debug(f'x.shape: {x.shape}')
     logging.debug(f'y.shape: {y.shape}')
 
     epochs = 30
 
     mlp_classifier.train(
-        X,
+        x,
         y,
         lr=0.01,
         batch_size=32,
@@ -468,21 +468,21 @@ def build_target_classifier(
         loss='binary_crossentropy',
         class_weight=None,
         sample_weight=z_weights,
-        train_val_split=False,  # do not split train and val, predict on all the training set
-        retrain=retrain_flag,
+        train_val_split=False,  # do not split train and val, predict on all the training set  # noqa: E501
+        retrain=bool(retrain_flag),
     )
     K.clear_session()  # to prevent load_model becomes slower and slower
     clf = load_model(model_save_path)
     logging.debug(
-        f'[build_target_classifier] prediction in: {list(np.argmax(clf.predict(X[0 : len(z_in)]), axis=1))}'
+        f'[build_target_classifier] prediction in: {list(np.argmax(clf.predict(x[0 : len(z_in)]), axis=1))}'
     )
     logging.debug(
-        f'[build_target_classifier] prediction drift: {list(np.argmax(clf.predict(X[len(z_in) :]), axis=1))}'
+        f'[build_target_classifier] prediction drift: {list(np.argmax(clf.predict(x[len(z_in) :]), axis=1))}'
     )
 
-    y_pred = clf.predict(X)
+    y_pred = clf.predict(x)
     logging.debug(f'y_pred shape: {y_pred.shape}')
-    y_pred = np.argmax(clf.predict(X), axis=1)
+    y_pred = np.argmax(clf.predict(x), axis=1)
     logging.info(f'clf predict accuracy: {accuracy_score(y, y_pred)}')
 
 

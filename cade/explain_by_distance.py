@@ -124,7 +124,9 @@ def explain_drift_samples_per_instance(
         np.savez_compressed(mask_file_path, masks=masks)
 
 
-def get_drift_samples_to_explain(one_by_one_check_result_path):
+def get_drift_samples_to_explain(
+    one_by_one_check_result_path: str,
+) -> tuple[list, list, list]:
     pattern = re.compile(r'best inspection count: \d+')
     with open(one_by_one_check_result_path) as f:
         inspect_cnt = int(
@@ -195,7 +197,7 @@ def explain_instance(
     OPTIMIZER = tf.train.AdamOptimizer
     INITIALIZER = tf.keras.initializers.RandomUniform(minval=0, maxval=1)
     LR = 1e-2  # learning rate
-    # a regularized regression method that linearly combines the L1 and L2 penalties of the lasso and ridge methods.
+    # a regularized regression method that linearly combines the L1 and L2 penalties of the lasso and ridge methods.  # noqa: E501
     REGULARIZER = 'elasticnet'
     EXP_EPOCH = 250
     EXP_DISPLAY_INTERVAL = 10  # print middle result every k epochs

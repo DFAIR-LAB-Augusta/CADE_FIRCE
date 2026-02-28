@@ -14,30 +14,20 @@ IDS:
     python -u evaluate_explanation_by_distance.py IDS_new_Infilteration approximation_loose 0.001 0 0.1
     nohup python -u evaluate_explanation_by_distance.py IDS_new_Infilteration gradient 0.001 0 0.1 > logs/nohup-IDS-gradient-exp.log &
     random 100 times: nohup python -u evaluate_explanation_by_distance.py IDS_new_Infilteration random 0.001 0 0.1 > logs/nohup-IDS-random-exp.log &
-"""
-
-import os
-
-os.environ['PYTHONHASHSEED'] = '0'
-import random
-
-from numpy.random import seed
-
-random.seed(1)
-seed(1)
-from tensorflow import set_random_seed
-
-set_random_seed(2)
+"""  # noqa: E501
 
 import logging
 import os
+import random
 import sys
 import traceback
 from timeit import default_timer as timer
 
 import numpy as np
 import tensorflow as tf
-from keras import backend as K
+from keras import backend as k
+from numpy.random import seed
+from tensorflow import set_random_seed
 from tqdm import tqdm
 
 import cade.data as data
@@ -45,6 +35,15 @@ import cade.explain_by_distance as explain_dis
 import cade.utils as utils
 from cade.autoencoder import Autoencoder
 from cade.logger import init_log
+
+os.environ['PYTHONHASHSEED'] = '0'
+
+
+random.seed(1)
+seed(1)
+
+set_random_seed(2)
+
 
 families = [
     'FakeInstaller',
@@ -60,25 +59,27 @@ families = [
 RANDOM_TRY = 100
 
 
-def load_necessary_model_and_data(X_train, dataset, lambda_1, exp_method):
+def load_necessary_model_and_data(x_train, dataset, lambda_1, exp_method):
     if 'drebin' in dataset:
-        cae_dims = [X_train.shape[1], 512, 128, 32, 7]
-        cae_weights_path = f'models/{dataset}/cae_{X_train.shape[1]}-512-128-32-7_lr0.0001_b64_e250_m10.0_lambda0.1_weights.h5'
+        cae_dims = [x_train.shape[1], 512, 128, 32, 7]
+        cae_weights_path = f'models/{dataset}/cae_{x_train.shape[1]}-512-128-32-7_lr0.0001_b64_e250_m10.0_lambda0.1_weights.h5'  # noqa: E501
         feature_file = (
             f'data/{dataset}/drebin_new{new_label}_train_selected_features.txt'
         )
     elif 'IDS' in dataset:
-        cae_dims = [X_train.shape[1], 64, 32, 16, 3]
-        cae_weights_path = f'models/{dataset}/cae_83-64-32-16-3_lr0.0001_b512_e250_m10.0_lambda0.1_weights.h5'
+        cae_dims = [x_train.shape[1], 64, 32, 16, 3]
+        cae_weights_path = f'models/{dataset}/cae_83-64-32-16-3_lr0.0001_b512_e250_m10.0_lambda0.1_weights.h5'  # noqa: E501
         feature_file = 'data/IDS_83_features.txt'
     elif 'bluehex' in dataset:
-        cae_dims = [X_train.shape[1], 1024, 256, 64, 5]
-        cae_weights_path = f'models/{dataset}/cae_1857-1024-256-64-5_lr0.0001_b256_e250_m10.0_weights.h5'
-        feature_file = '/home/liminyang/bluehex/cade_feature_names_setting5.txt'  # setting 5 for option 6
+        cae_dims = [x_train.shape[1], 1024, 256, 64, 5]
+        cae_weights_path = f'models/{dataset}/cae_1857-1024-256-64-5_lr0.0001_b256_e250_m10.0_weights.h5'  # noqa: E501
+        # setting 5 for option 6
+        feature_file = '/home/liminyang/bluehex/cade_feature_names_setting5.txt'
     else:
         sys.exit(-1)
 
-    K.clear_session()  # be careful with this it may clean up previous loaded models.
+    # be careful with this it may clean up previous loaded models.
+    k.clear_session()
     ae = Autoencoder(cae_dims)
     _ae_model, encoder_model = ae.build()
     encoder_model.load_weights(cae_weights_path, by_name=True)
@@ -141,13 +142,14 @@ def get_important_fea_and_distance(
             print(f'load important_feas_len_list len: {len(important_feas_len_list)}')
         else:
             logging.error(
-                'you need to perform distance_mm1 method to get the length of important features first'
+                'you need to perform distance_mm1 method to get the length of important features first'  # noqa: E501
             )
             sys.exit(1)
     else:
         important_feas_len_list = []
 
-    success = 0  # number of sucessful perturbations from drift to in-distribution.
+    # number of sucessful perturbations from drift to in-distribution.
+    success = 0
 
     lowerbound_list = []
     logging.debug(f'len(drift_samples_idx_list): {len(drift_samples_idx_list)}')
@@ -194,7 +196,7 @@ def get_important_fea_and_distance(
         elif exp_method == 'distance_mm1':
             if mask is not None:
                 if use_gumbel:
-                    # only when m = m1 = 1, it's important, we could also rank the rest of the features,
+                    # only when m = m1 = 1, it's important, we could also rank the rest of the features,  # noqa: E501
                     # but we keep m = m1 = 1 for simplicity (less features).
                     important_feas = np.where(mask == 1)[0]
                 else:
@@ -226,7 +228,7 @@ def get_important_fea_and_distance(
                     cases = [
                         1,
                         2,
-                    ]  # idx-2: closest to Gin Master, idx-1: closest to DroidKungfu (most FakeDoc closer to DroidKungfu).
+                    ]  # idx-2: closest to Gin Master, idx-1: closest to DroidKungfu (most FakeDoc closer to DroidKungfu).  # noqa: E501
                 elif 'IDS' in dataset:
                     cases = range(
                         5
@@ -240,21 +242,21 @@ def get_important_fea_and_distance(
                         'w',
                     ) as f:
                         f.write(
-                            f'feature index,sample {idx} important feature,original value,avg value in testing set(real family),avg value in training set(closest family),avg value in both train and test set(closest family),closest sample value\n'
+                            f'feature index,sample {idx} important feature,original value,avg value in testing set(real family),avg value in training set(closest family),avg value in both train and test set(closest family),closest sample value\n'  # noqa: E501
                         )
                         f.writelines(
-                            f'{fea},{features[fea]},{x[fea]:e},{np.mean(X_real_family[:, fea]):e},'
+                            f'{fea},{features[fea]},{x[fea]:e},{np.mean(X_real_family[:, fea]):e},'  # noqa: E501
                             f'{np.mean(X_train_family_dict[closest_family][:, fea]):e},'
-                            f'{np.mean(X_closest_family_all[:, fea]):e},{closest_sample_family_dict[closest_family][fea]:e}\n'
+                            f'{np.mean(X_closest_family_all[:, fea]):e},{closest_sample_family_dict[closest_family][fea]:e}\n'  # noqa: E501
                             for fea in important_feas
                         )
 
-            """ the chosen method: perturb the important features and craft a new sample """
+            """ the chosen method: perturb the important features and craft a new sample """  # noqa: E501
             x_new = np.copy(x)
             for i in important_feas:
                 """ NOTE: flip important features:
                     for baseline 2: important features all have a feature value = 1, so there is only 1 -> 0.
-                    for distance based methods: both 1-> 0 and 0->1 are possible"""
+                    for distance based methods: both 1-> 0 and 0->1 are possible"""  # noqa: E501
                 if 'drebin' in dataset:
                     x_new[i] = 1 if x[i] == 0 else 0
                 elif 'IDS' in dataset:
@@ -295,10 +297,10 @@ def get_important_fea_and_distance(
         ratio = success / len(perturbed_dis)
         f.write(f'{exp_method} success idx: {success_idx}\n\n')
         print(
-            f'{exp_method} success from drifting to in-dist: {success}, ratio: {ratio * 100:.2f}%'
+            f'{exp_method} success from drifting to in-dist: {success}, ratio: {ratio * 100:.2f}%'  # noqa: E501
         )
         f.write(
-            f'{exp_method} success from drifting to in-dist: {success}, ratio: {ratio * 100:.2f}%\n'
+            f'{exp_method} success from drifting to in-dist: {success}, ratio: {ratio * 100:.2f}%\n'  # noqa: E501
         )
 
     with open(save_distance_mm1_important_fea_len_file, 'w') as f:
@@ -313,7 +315,7 @@ def preprocess_training_info(
     X_train_family_dict = {}
     closest_sample_family_dict = {}
 
-    # the load_training_info() is actually very time consuming, so just load it once for each closest family here.
+    # the load_training_info() is actually very time consuming, so just load it once for each closest family here.  # noqa: E501
     for family in np.unique(drift_samples_closest):
         _z_train, _z_closest_family, centroid, dis_to_centroid, mad = (
             load_training_info(training_info_for_detect_path, family)
@@ -360,13 +362,13 @@ def get_backpropagation_important_features(
     important_feas_len_list,
     save_result_path,
 ) -> None:
-    """G = d(f(x) - f(c)) / dx, sum G over rows (or maybe columns), then rank G to get the feature importance ranking"""
+    """G = d(f(x) - f(c)) / dx, sum G over rows (or maybe columns), then rank G to get the feature importance ranking"""  # noqa: E501
     lowerbound_list = []
     s = timer()
 
     """ construct the tf nodes to calculate the gradients.
         the tensors should be put outside the for loop so that we only add these nodes
-        to the graph once instead of multiple times, the latter would make the graph bigger and bigger and get slower"""
+        to the graph once instead of multiple times, the latter would make the graph bigger and bigger and get slower"""  # noqa: E501
     input_tensor = encoder_model.get_input_at(0)
     centroid_tensor = tf.placeholder(tf.float32, shape=(None, cae_dims[-1]))
     latent_input = encoder_model(input_tensor)
@@ -444,7 +446,7 @@ def get_backpropagation_important_features(
     with open(save_result_path, 'a') as f:
         ratio = success / len(perturbed_dis)
         f.write(
-            f'baseline 2: gradient success from drifting to in-dist: {success}, ratio: {ratio * 100:.2f}%\n'
+            f'baseline 2: gradient success from drifting to in-dist: {success}, ratio: {ratio * 100:.2f}%\n'  # noqa: E501
         )
 
     e = timer()
@@ -474,7 +476,7 @@ def backpropagation_gradients(
             logging.critical(f'ordered g: {list(ordered_g_abs)}')
             important_feas_list = []
             logging.debug(
-                f'backpropagation important features for drifting-{idx}: \n####################################'
+                f'backpropagation important features for drifting-{idx}: \n####################################'  # noqa: E501
             )
             for i in range(50):
                 logging.debug(f'{features[ordered_g_abs_index[i]]}')
@@ -504,7 +506,7 @@ def eval_random_select_important_feas(
     encoder_model,
     save_result_path,
 ) -> None:
-    """baseline 3: randomly choose the same number of important features and craft a new sample"""
+    """baseline 3: randomly choose the same number of important features and craft a new sample"""  # noqa: E501
     if os.path.exists(save_distance_mm1_important_fea_len_file):
         s = timer()
         important_feas_len_list = read_feas_len_from_file(
@@ -536,18 +538,18 @@ def eval_random_select_important_feas(
                         perturbed_value = closest_sample_family_dict[family][i]
                         x_random[i] = perturbed_value
                 if idx == 0:
-                    X_random_arr = np.copy(x_random)
-                    Centroid_arr = np.copy(family_info_dict[family][0])
+                    x_random_arr = np.copy(x_random)
+                    centroid_arr = np.copy(family_info_dict[family][0])
                 else:
-                    X_random_arr = np.vstack((X_random_arr, x_random))
-                    Centroid_arr = np.vstack((
-                        Centroid_arr,
+                    x_random_arr = np.vstack((x_random_arr, x_random))
+                    centroid_arr = np.vstack((
+                        centroid_arr,
                         family_info_dict[family][0],
                     ))
 
-            latent_x_random = encoder_model.predict(X_random_arr)
+            latent_x_random = encoder_model.predict(x_random_arr)
             random_dis = np.sqrt(
-                np.sum(np.square(latent_x_random - Centroid_arr), axis=1)
+                np.sum(np.square(latent_x_random - centroid_arr), axis=1)
             )
 
             success_random = len(np.where(random_dis <= lowerbound_list)[0])
@@ -565,11 +567,11 @@ def eval_random_select_important_feas(
             total_try = len(random_dis_array_list) * len(random_dis_array_list[0])
             random_ratio = total_success_random / total_try
             print(
-                f'random success perturbed from drifting to in-dist: {random_ratio * 100:.2f}'
+                f'random success perturbed from drifting to in-dist: {random_ratio * 100:.2f}'  # noqa: E501
             )
             f.write(
                 f'random success from drifting to in-dist: {total_success_random}, total_try: {total_try}, \
-                     ratio: {random_ratio * 100:.2f}%\n'
+                     ratio: {random_ratio * 100:.2f}%\n'  # noqa: E501
             )
 
         e = timer()
@@ -577,7 +579,7 @@ def eval_random_select_important_feas(
 
     else:
         logging.error(
-            'you need to perform distance_mm1 method to get the length of important features first'
+            'you need to perform distance_mm1 method to get the length of important features first'  # noqa: E501
         )
         sys.exit(1)
 
@@ -585,13 +587,14 @@ def eval_random_select_important_feas(
 if __name__ == '__main__':
     if len(sys.argv) != 6:
         logging.error(
-            'usage example: python -u evaluate_explanation_by_distance.py drebin_new_7 distance_mm1 0.001 1 0.1'
+            'usage example: python -u evaluate_explanation_by_distance.py drebin_new_7 distance_mm1 0.001 1 0.1'  # noqa: E501
         )
         sys.exit(-1)
 
     dataset = sys.argv[1]  # drebin_new_7 or IDS_new_Infilteration
-    exp_method = sys.argv[2]  # distance_mm1, approximation_loose, random, gradient
-    # lambda_1 for baseline methods needs to be the same as distance_mm1 to keep the same important features length
+    # distance_mm1, approximation_loose, random, gradient
+    exp_method = sys.argv[2]
+    # lambda_1 for baseline methods needs to be the same as distance_mm1 to keep the same important features length  # noqa: E501
     lambda_1 = float(sys.argv[3])  # 0.001
     use_gumbel = int(sys.argv[4])  # 1 or 0, use gumbel when distance_mm1
     temp = float(
@@ -614,8 +617,8 @@ if __name__ == '__main__':
 
     gumble_flag = 'with' if use_gumbel == 1 else 'without'
 
-    save_result_path = f'{REPORT_FOLDER}/{dataset}-{exp_method}-lambda-{lambda_1}-temp-{temp}-{gumble_flag}-gumble.txt'
-    # other explanation method would load this file to determine how many important features to pick
+    save_result_path = f'{REPORT_FOLDER}/{dataset}-{exp_method}-lambda-{lambda_1}-temp-{temp}-{gumble_flag}-gumble.txt'  # noqa: E501
+    # other explanation method would load this file to determine how many important features to pick  # noqa: E501
     save_distance_mm1_important_fea_len_file = os.path.join(
         REPORT_FOLDER,
         f'{dataset}-distance-mm1-important-feas-len-temp-{temp}-lambda-{lambda_1}.txt',
@@ -631,9 +634,9 @@ if __name__ == '__main__':
         logging.error(f'dataset {dataset} not supported')
         sys.exit(-1)
 
-    one_by_one_check_result_path = f'reports/{dataset}/dist_mlp_one_by_one_check_pr_value_m10.0_mad3.5_lambda0.1.csv'
+    one_by_one_check_result_path = f'reports/{dataset}/dist_mlp_one_by_one_check_pr_value_m10.0_mad3.5_lambda0.1.csv'  # noqa: E501
 
-    X_train, y_train, X_test, y_test = data.load_features(dataset, new_label)
+    x_train, y_train, x_test, y_test = data.load_features(dataset, new_label)
 
     drift_samples_idx_list, drift_samples_real_labels, drift_samples_closest = (
         explain_dis.get_drift_samples_to_explain(one_by_one_check_result_path)
@@ -647,13 +650,13 @@ if __name__ == '__main__':
     )
     family_info_dict, X_train_family_dict, closest_sample_family_dict = (
         preprocess_training_info(
-            X_train, y_train, drift_samples_closest, training_info_for_detect_path
+            x_train, y_train, drift_samples_closest, training_info_for_detect_path
         )
     )
 
     s1 = timer()
     mask_list, encoder_model, features, cae_dims, cae_weights_path = (
-        load_necessary_model_and_data(X_train, dataset, lambda_1, exp_method)
+        load_necessary_model_and_data(x_train, dataset, lambda_1, exp_method)
     )
     e1 = timer()
     logging.debug(f'load_necessary_model_and_data time: {(e1 - s1):.2f}')
@@ -663,7 +666,7 @@ if __name__ == '__main__':
         s2 = timer()
         get_important_fea_and_distance(
             dataset,
-            X_test,
+            x_test,
             y_test,
             drift_samples_idx_list,
             drift_samples_real_labels,
@@ -682,15 +685,15 @@ if __name__ == '__main__':
         e2 = timer()
         logging.debug(f'get_important_fea_and_distance time: {(e2 - s2):.2f}')
     elif exp_method == 'gradient':
-        """ try Dr. Xing's mathematical baseline: backpropagate the gradients from low-d to high-d and get feature importance. """
+        """ try Dr. Xing's mathematical baseline: backpropagate the gradients from low-d to high-d and get feature importance. """  # noqa: E501
         if os.path.exists(save_distance_mm1_important_fea_len_file):
             important_feas_len_list = read_feas_len_from_file(
                 save_distance_mm1_important_fea_len_file
             )
             get_backpropagation_important_features(
                 dataset,
-                X_train,
-                X_test,
+                x_train,
+                x_test,
                 y_train,
                 y_test,
                 drift_samples_idx_list,
@@ -706,7 +709,7 @@ if __name__ == '__main__':
             )
         else:
             logging.error(
-                'you need to perform distance_mm1 method to get the length of important features first'
+                'you need to perform distance_mm1 method to get the length of important features first'  # noqa: E501
             )
             sys.exit(1)
     elif exp_method == 'random':
@@ -715,7 +718,7 @@ if __name__ == '__main__':
             save_distance_mm1_important_fea_len_file,
             drift_samples_idx_list,
             drift_samples_closest,
-            X_test,
+            x_test,
             y_test,
             family_info_dict,
             closest_sample_family_dict,
