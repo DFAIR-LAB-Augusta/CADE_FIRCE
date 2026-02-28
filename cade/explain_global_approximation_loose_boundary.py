@@ -8,40 +8,37 @@ For each closest family of the testing samples, build a global approximation mod
 For this version: we use in-dist and drift samples from the training set and drift samples from testing set, and synthesized drift based on
 testing drift to build a loose approximation model (does not really reflect the exact boundary of the detection module).
 
-"""
+"""  # noqa: E501
 
-import os
-
-os.environ['PYTHONHASHSEED'] = '0'
-from numpy.random import seed
-import random
-
-random.seed(1)
-seed(1)
-from tensorflow import set_random_seed
-
-set_random_seed(2)
-
-import sys
-from functools import partial
-import traceback
 import logging
+import os
+import random
 import re
+import traceback
+from functools import partial
 
 import numpy as np
 import tensorflow as tf
-
-from tqdm import tqdm
-from sklearn.metrics import accuracy_score, pairwise_distances
-
 from keras import backend as K
-from keras.layers import Input, Dense, Dropout
-from keras.models import Model, Sequential, load_model
+from keras.layers import Dense, Dropout, Input
+from keras.models import Model, load_model
+from numpy.random import seed
+from sklearn.metrics import accuracy_score, pairwise_distances
+from tensorflow import set_random_seed
+from tqdm import tqdm
 
-import cade.utils as utils
 import cade.classifier as classifier
 import cade.mask_exp_by_approximation as mask_exp
+import cade.utils as utils
 from cade.autoencoder import Autoencoder
+
+os.environ['PYTHONHASHSEED'] = '0'
+
+
+random.seed(1)
+seed(1)
+
+set_random_seed(2)
 
 
 def explain_drift_samples_per_instance(
@@ -55,13 +52,13 @@ def explain_drift_samples_per_instance(
     cae_weights_path,
     saved_exp_classifier_folder,
     mask_file_path,
-):
+) -> None:
     if os.path.exists(mask_file_path):
         logging.info(
             f'explanation result file {mask_file_path} exists, no need to run explanation module'
         )
     else:
-        drift_samples_idx_list, drift_samples_real_labels, drift_samples_closest = (
+        drift_samples_idx_list, _drift_samples_real_labels, drift_samples_closest = (
             get_drift_samples_to_explain(one_by_one_check_result_path)
         )
 
@@ -107,12 +104,12 @@ def explain_drift_samples_per_instance(
 
                 logging.debug(f'idx-[{idx}] closest family: {closest_family}')
 
-                logging.debug(f'[explanation] explain single instance...')
+                logging.debug('[explanation] explain single instance...')
                 final_model_path = os.path.join(
                     saved_exp_classifier_folder,
                     f'final_model_family_{closest_family}.h5',
                 )
-                approximation_mlp_model_path = os.path.join(
+                os.path.join(
                     saved_exp_classifier_folder, f'exp_mlp_family_{closest_family}.h5'
                 )
 
@@ -123,7 +120,7 @@ def explain_drift_samples_per_instance(
                     x_target, args.exp_lambda_1, diff_idx, final_model_path
                 )
                 masks.append(mask)
-                logging.debug(f'[explanation] explain single instance finished...')
+                logging.debug('[explanation] explain single instance finished...')
 
             except:
                 logging.error(f'idx: {idx}, sample_idx: {sample_idx}')
@@ -133,8 +130,8 @@ def explain_drift_samples_per_instance(
 
 
 def get_drift_samples_to_explain(one_by_one_check_result_path):
-    pattern = re.compile('best inspection count: \d+')
-    with open(one_by_one_check_result_path, 'r') as f:
+    pattern = re.compile(r'best inspection count: \d+')
+    with open(one_by_one_check_result_path) as f:
         inspect_cnt = int(
             re.findall(pattern, f.read())[0].replace('best inspection count: ', '')
         )
@@ -144,7 +141,7 @@ def get_drift_samples_to_explain(one_by_one_check_result_path):
         [],
         [],
     )
-    with open(one_by_one_check_result_path, 'r') as f:
+    with open(one_by_one_check_result_path) as f:
         next(f)
         for idx, line in enumerate(f):
             if idx < inspect_cnt:
@@ -160,9 +157,10 @@ def get_drift_samples_to_explain(one_by_one_check_result_path):
 
 
 def load_encoder(cae_dims, cae_weights_path):
-    K.clear_session()  # be careful with this it may clean up previous loaded models.
+    # be careful with this it may clean up previous loaded models.
+    K.clear_session()
     ae = Autoencoder(cae_dims)
-    ae_model, encoder_model = ae.build()
+    _ae_model, encoder_model = ae.build()
     encoder_model.load_weights(cae_weights_path, by_name=True)
     return encoder_model
 
@@ -199,7 +197,7 @@ def build_global_exp_model_for_each_closest_family(
     X_in_family = {}
     for family in np.unique(drift_samples_closest):
         """first need to synthesize more drift samples to balance in-dist and drift"""
-        z_train, z_closest_family, centroid, dis_to_centroid, mad = load_training_info(
+        _z_train, z_closest_family, centroid, dis_to_centroid, mad = load_training_info(
             training_info_for_detect_path, family
         )
 
@@ -268,7 +266,8 @@ def build_global_exp_model_for_each_closest_family(
             )
             z_weights = None  # DO not use weights at this time.
             NUM_LATENT_FEATURES = z_in.shape[1]
-            num_classes = 2  # there are only two classes: in-distribution and drift.
+            # there are only two classes: in-distribution and drift.
+            num_classes = 2
             # NOTE: here use 8-15-2 for drebin, 3-15-2 for IDS
             mlp_dims = [NUM_LATENT_FEATURES, 15, num_classes]
             dropout_ratio = 0  # do not use dropout here
@@ -366,7 +365,8 @@ def get_in_and_out_distribution_samples(
 def synthesize_local_samples(
     z_group, cnt_syn, centroid, dis_to_centroid, mad, mad_threshold, base_label
 ):
-    augment_times = round(cnt_syn / len(z_group))  # No. of times each sample synthesize
+    # No. of times each sample synthesize
+    augment_times = round(cnt_syn / len(z_group))
 
     sigma = mad
     logging.debug(f'noise sigma: {sigma}')
@@ -378,12 +378,10 @@ def synthesize_local_samples(
             syn_list.append(z[i] + noise[i])
         z_syn = np.transpose(np.array(syn_list))
 
-        if idx == 0:
-            z_syn_total = np.array(z_syn)
-        else:
-            z_syn_total = np.vstack((z_syn_total, z_syn))
+        z_syn_total = np.array(z_syn) if idx == 0 else np.vstack((z_syn_total, z_syn))
 
-    logging.debug(f'z_syn_total.shape: {z_syn_total.shape}')  # (≥cnt_syn, latent_dim)
+    # (≥cnt_syn, latent_dim)
+    logging.debug(f'z_syn_total.shape: {z_syn_total.shape}')
 
     # use the detection module to determine the synthesized samples are in-dist or drift
     z_syn_drift, z_syn_in = [], []
@@ -404,12 +402,10 @@ def synthesize_local_samples(
     return z_syn_in, z_syn_drift
 
 
-def detect_if_sample_is_drift(z, centroid, dis_to_centroid, mad, mad_threshold):
+def detect_if_sample_is_drift(z, centroid, dis_to_centroid, mad, mad_threshold) -> bool:
     dis = np.linalg.norm(z - centroid)
     anomaly = np.abs(dis - np.median(dis_to_centroid)) / mad
-    if anomaly > mad_threshold:
-        return True
-    return False
+    return anomaly > mad_threshold
 
 
 def assign_weights_based_on_dist(z_in, z_drift, z_target):
@@ -447,7 +443,7 @@ def kernel(d, kernel_width):
 
 def build_target_classifier(
     z_in, z_drift, y_in, y_drift, dropout_ratio, z_weights, mlp_dims, model_save_path
-):
+) -> None:
     mlp_classifier = classifier.MLPClassifier(
         dims=mlp_dims, model_save_name=model_save_path, dropout=dropout_ratio, verbose=0
     )  # no logs
@@ -463,7 +459,7 @@ def build_target_classifier(
 
     epochs = 30
 
-    val_acc = mlp_classifier.train(
+    mlp_classifier.train(
         X,
         y,
         lr=0.01,
@@ -497,7 +493,7 @@ def combine_encoder_and_approximation_model(
     cae_weights_path,
     approximation_mlp_model_path,
     final_model_save_path,
-):
+) -> None:
     act = 'relu'
     init = 'glorot_uniform'
     n_stacks = len(cae_dims) - 1
@@ -535,7 +531,8 @@ def explain_instance(x, lambda_1, diff_idx, final_model_path):
     OPTIMIZER = tf.train.AdamOptimizer
     INITIALIZER = tf.keras.initializers.RandomUniform(minval=0, maxval=1)
     LR = 1e-2  # learning rate
-    REGULARIZER = 'elasticnet'  # a regularized regression method that linearly combines the L1 and L2 penalties of the lasso and ridge methods.
+    # a regularized regression method that linearly combines the L1 and L2 penalties of the lasso and ridge methods.
+    REGULARIZER = 'elasticnet'
     EXP_EPOCH = 250
     EXP_DISPLAY_INTERVAL = 10  # print middle result every k epochs
     EXP_LAMBDA_PATIENCE = 20
@@ -554,7 +551,7 @@ def explain_instance(x, lambda_1, diff_idx, final_model_path):
 
     if np.argmax(y) != 1:  # don't explain wrongly classified target drift samples
         mask_best = None
-        logging.error(f'[explain_instance] y is predicted as 0')
+        logging.error('[explain_instance] y is predicted as 0')
     else:
         mask_best = None
         exp_test = mask_exp.OptimizeExp(

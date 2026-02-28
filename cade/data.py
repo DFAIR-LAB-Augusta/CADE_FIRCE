@@ -6,23 +6,22 @@ Functions for caching and loading data.
 
 """
 
-import random
-
-random.seed(1)
-
-import os, sys
 import logging
-import numpy as np
-
-from timeit import default_timer as timer
+import os
+import random
+import sys
+from collections import Counter, OrderedDict
 from datetime import datetime
-from tqdm import tqdm
-from collections import OrderedDict, Counter
+from timeit import default_timer as timer
+
+import numpy as np
 from sklearn.feature_selection import VarianceThreshold
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from sklearn.preprocessing import LabelEncoder
 
 import cade.utils as utils
 from cade.config import config
+
+random.seed(1)
 
 
 def load_features(dataset, newfamily, folder='data/'):
@@ -37,7 +36,7 @@ def load_features(dataset, newfamily, folder='data/'):
     )
 
     logging.debug(
-        f'before label adjusting: y_train: {Counter(y_train)}\n  y_test: {Counter(y_test)}'
+        f'before label adjusting: y_train: {Counter(y_train)}\n  y_test: {Counter(y_test)}'  # noqa: E501
     )
 
     if 'drebin' in dataset:
@@ -50,12 +49,13 @@ def load_features(dataset, newfamily, folder='data/'):
         logging.error(f'dataset {dataset} not supported')
         sys.exit(-4)
 
-    """transform training set to continuous labels, always use the biggest label as the unseen family"""
+    """transform training set to continuous labels, always use the biggest label as the unseen family"""  # noqa: E501
     le = LabelEncoder()
     y_train_prime = le.fit_transform(y_train)
     mapping = {}
     for i in range(len(y_train)):
-        mapping[y_train[i]] = y_train_prime[i]  # mapping: real label -> converted label
+        # mapping: real label -> converted label
+        mapping[y_train[i]] = y_train_prime[i]
 
     logging.debug(f'LabelEncoder mapping: {mapping}')
 
@@ -73,12 +73,14 @@ def load_features(dataset, newfamily, folder='data/'):
     return X_train, y_train_prime, X_test, y_test_prime
 
 
-def prepare_dataset(args):
+def prepare_dataset(args) -> None:
     if 'drebin' in args.data:
         prepare_drebin_data(args.data, newfamily=args.newfamily_label)
 
 
-def prepare_drebin_data(dataset_name, folder='data/', test_ratio=0.2, newfamily=7):
+def prepare_drebin_data(
+    dataset_name, folder='data/', test_ratio=0.2, newfamily=7
+) -> None:
     saved_data_file = os.path.join(folder, f'{dataset_name}.npz')
     if os.path.exists(saved_data_file):
         logging.info(f'{saved_data_file} exists, no need to re-generate')
@@ -184,7 +186,7 @@ def sort_drebin_7family_by_time(intermediate_folder, newfamily):
     newfamily_sha_list = []
     newfamily_sha_timestamp_dict = {}
 
-    with open('data/drebin_metadata.csv', 'r') as f:
+    with open('data/drebin_metadata.csv') as f:
         next(f)
         for line in f:
             sha, family, latest_modify_time = line.strip().split(',')
@@ -257,7 +259,7 @@ def get_training_full_feature_names(
     )
     if os.path.exists(saved_train_feature_file):
         train_feature_names = []
-        with open(saved_train_feature_file, 'r') as f:
+        with open(saved_train_feature_file) as f:
             for line in f:
                 train_feature_names.append(line.strip())
     else:
@@ -269,13 +271,12 @@ def get_training_full_feature_names(
                 if l != '\n':
                     train_feature_names.add(l.strip())
 
-        train_feature_names = sorted(list(train_feature_names))
+        train_feature_names = sorted(train_feature_names)
         logging.info(
             f'[drebin-new{newfamily}] # of features in training set: {len(train_feature_names)}'
         )
         with open(saved_train_feature_file, 'w') as f:
-            for fea in train_feature_names:
-                f.write(fea + '\n')
+            f.writelines(fea + '\n' for fea in train_feature_names)
 
     return train_feature_names
 
@@ -333,8 +334,7 @@ def get_selected_features(
     )
     if not os.path.exists(saved_selected_feature_file):
         with open(saved_selected_feature_file, 'w') as fout:
-            for fea in selected_features:
-                fout.write(f'{fea}\n')
+            fout.writelines(f'{fea}\n' for fea in selected_features)
     saved_selected_vectors_file = os.path.join(
         intermediate_folder, f'drebin_new{newfamily}_train_selected_feature_vectors.npz'
     )
@@ -377,7 +377,8 @@ def epoch_batches(X_train, y_train, batch_size, similar_samples_ratio):
     tmp = random_idx[half_size]
 
     # NOTE: if error here, it's because we didn't convert X_train and X_test as np.float32 when generating the npz file.
-    assert np.all(X_train[tmp] == b_out_x[1, 0])  # to check if the split is correct
+    # to check if the split is correct
+    assert np.all(X_train[tmp] == b_out_x[1, 0])
 
     # Sort data by label
     index_cls, index_no_cls = [], []
@@ -401,7 +402,7 @@ def epoch_batches(X_train, y_train, batch_size, similar_samples_ratio):
     start = timer()
     for b in range(batch_count):
         # Get similar samples
-        for m in range(0, num_sim):
+        for m in range(num_sim):
             # random sampling without replacement, randomly pick an index from y_train
             # where y_train[index] = b_out_y[b, m]
             # NOTE: list() operation is very slow, random.sample is also slower than np.random.choice()

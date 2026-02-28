@@ -1,28 +1,32 @@
-"""
+r"""
 Our method: use m * m1 as explanation, only when m = m1 = 1, feature is important.
 Explaining drift: minimize the difference between a drift $x$ and an in distribution centroid $c$ by swapping a
                 small proportion of features.
 Loss function:  \min E_{m \sim Bern(p)} ||f(x * (1 - m * m1) + (1-x)*(m * m1)), f(centroid)||_2 + \lambda * ||m * m1||_{1+2}
 """
 
-import os, sys
+import logging
+import os
+import random
+import warnings
+
+import numpy as np
+import tensorflow as tf
+from keras import backend as K
+from numpy.random import seed
+from tensorflow import set_random_seed
 
 os.environ['PYTHONHASHSEED'] = '0'
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'  # so the IDs match nvidia-smi
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
-from numpy.random import seed
-import random
 
 random.seed(1)
 seed(1)
 
-from tensorflow import set_random_seed
 
 set_random_seed(2)
 
-from keras import backend as K
-import tensorflow as tf
 
 K.tensorflow_backend._get_available_gpus()
 
@@ -34,17 +38,11 @@ config.gpu_options.per_process_gpu_memory_fraction = 0.5
 # create a session with the above options specified
 K.tensorflow_backend.set_session(tf.Session(config=config))
 
-import sys
-import logging
-
-import numpy as np
-
-import warnings
 
 warnings.filterwarnings('ignore')
 
 
-class OptimizeExp(object):
+class OptimizeExp:
     def __init__(
         self,
         batch_size,
@@ -59,7 +57,7 @@ class OptimizeExp(object):
         normalize_choice,
         use_concrete,
         model_file,
-    ):
+    ) -> None:
         """Explaining drift: minimize the difference between a drift $x$ and an in distribution centroid $c$ by swapping a
                             small proportion of features.
         :param batch_size: training batch size.
@@ -121,7 +119,7 @@ class OptimizeExp(object):
         loss_l2 = tf.sqrt(tf.reduce_sum(tf.square(tensor)))
         return loss_l1 + loss_l2
 
-    def build_opt_func(self, mask_shape, latent_dim):
+    def build_opt_func(self, mask_shape, latent_dim) -> None:
 
         # define and prepare variables.
         with tf.variable_scope('p', reuse=tf.AUTO_REUSE):
@@ -129,7 +127,7 @@ class OptimizeExp(object):
                 'p', shape=mask_shape, initializer=self.initializer
             )
 
-        ## normalize variables
+        # normalize variables
         if self.normalize_choice == 'sigmoid':
             logging.debug('Using sigmoid normalization.')
             self.p_normalized = tf.sigmoid(self.p)
@@ -140,7 +138,7 @@ class OptimizeExp(object):
             logging.debug('Using clip normalization.')
             self.p_normalized = tf.minimum(1.0, tf.maximum(self.p, 0.0))
 
-        ## discrete variables to continuous variables.
+        # discrete variables to continuous variables.
         if self.use_concrete:
             self.mask = self.concrete_transformation(
                 self.p_normalized, mask_shape, self.batch_size, self.temp
@@ -234,7 +232,7 @@ class OptimizeExp(object):
         logging.debug(f'input_ shape: {input_.shape}')
 
         sync_lowd = self.model.predict(input_)
-        dis = np.square((sync_lowd - centroid))
+        dis = np.square(sync_lowd - centroid)
         dis = np.mean(np.sqrt(np.sum(dis, axis=1)))
         logging.debug(
             f'x_target + synthesized sample average distance to centroid: {dis}'
@@ -346,6 +344,6 @@ class OptimizeExp(object):
                 loss_sparse_mask_last = loss_sparse_mask
 
         if mask_best is None:
-            logging.info(f'did NOT find the best mask')
+            logging.info('did NOT find the best mask')
 
         return mask_best

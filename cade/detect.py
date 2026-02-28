@@ -6,19 +6,27 @@ Functions for detecting drifting samples, write the closest family for each samp
 
 """
 
+import logging
 import os
+import random
+
+import numpy as np
+import tensorflow as tf
+from keras import backend as K
+from numpy.random import seed
+from tensorflow import set_random_seed
+from tqdm import tqdm
+
+from cade.autoencoder import Autoencoder
 
 os.environ['PYTHONHASHSEED'] = '0'
-from numpy.random import seed
-import random
+
 
 random.seed(1)
 seed(1)
-from tensorflow import set_random_seed
 
 set_random_seed(2)
 
-import tensorflow as tf
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 # TensorFlow wizardry
@@ -27,23 +35,6 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 # Only allow a total of half the GPU memory to be allocated
 config.gpu_options.per_process_gpu_memory_fraction = 0.5
-
-import sys
-import logging
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-from timeit import default_timer as timer
-from collections import Counter
-from keras import backend as K
-from keras.models import load_model
-from tqdm import tqdm
-
-from sklearn.manifold import TSNE
-
-import cade.utils as utils
-from cade.autoencoder import Autoencoder
 
 
 def detect_drift_samples(
@@ -59,7 +50,7 @@ def detect_drift_samples(
     all_detect_path,
     simple_detect_path,
     training_info_for_detect_path,
-):
+) -> None:
     if os.path.exists(all_detect_path) and os.path.exists(simple_detect_path):
         logging.info('Detection result files exist, no need to redo the detection')
     else:
@@ -135,7 +126,7 @@ def detect_drift_samples(
 def get_latent_representation_keras(dims, best_weights_file, X_train, X_test):
     K.clear_session()
     ae = Autoencoder(dims)
-    ae_model, encoder_model = ae.build()
+    _ae_model, encoder_model = ae.build()
     encoder_model.load_weights(best_weights_file, by_name=True)
 
     z_train = encoder_model.predict(X_train)

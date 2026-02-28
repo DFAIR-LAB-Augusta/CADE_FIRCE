@@ -10,27 +10,24 @@ IDS_new_Hulk.npz: Counter({0: 66245, 2: 43487, 1: 11731, 3: 9237})
 import os
 
 os.environ['PYTHONHASHSEED'] = '0'
-from numpy.random import seed
 import random
+
+from numpy.random import seed
 
 random.seed(1)
 seed(1)
 
-import sys
-import numpy as np
 import argparse
 import logging
-
 from collections import Counter
 from pprint import pformat
 from timeit import default_timer as timer
 
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.preprocessing import OneHotEncoder
+import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 
 from cade.config import config
-
 
 # On our own lab server
 DATA_FOLDER = config['IDS2018_clean']
@@ -71,12 +68,12 @@ ALL_FILES_LIST = [
 ]
 
 
-def create_folder(name):
+def create_folder(name) -> None:
     if not os.path.exists(name):
         os.makedirs(name)
 
 
-def main():
+def main() -> None:
     args = parse_args()
 
     """ parse required training and testing files, concatenate and resplit them. """
@@ -154,7 +151,7 @@ def split_data(args, saved_unnormalized_path):
             X_new, y_new = extract_data_by_category(mal_day, mal_category)
 
         for idx, (X, y) in enumerate(
-            zip([X_benign] + X_mal_list, [y_benign] + y_mal_list)
+            zip([X_benign, *X_mal_list], [y_benign, *y_mal_list])
         ):
             X_train_tmp, X_test_tmp, y_train_tmp, y_test_tmp = train_test_split(
                 X, y, test_size=0.2, shuffle=False
@@ -223,7 +220,7 @@ def extract_data_by_category(single_day, category):
     return sorted_data, sorted_label
 
 
-def normalize(X_train, X_test, y_train, y_test, ratio, save_path):
+def normalize(X_train, X_test, y_train, y_test, ratio, save_path) -> None:
     print(f'y_train unique: {np.unique(y_train)}')
 
     """ downsampling """
@@ -361,7 +358,7 @@ def transform_ports_to_categorical(
     return ports_transform
 
 
-def stats_data_helper(X, data_type):
+def stats_data_helper(X, data_type) -> None:
     print('==================')
     print(f'feature stats for {data_type}')
     print(f'min: {np.min(X, axis=0)}')
@@ -369,13 +366,13 @@ def stats_data_helper(X, data_type):
     print(f'max: {np.max(X, axis=0)}')
 
 
-def stats_label_helper(y, data_type):
+def stats_label_helper(y, data_type) -> None:
     print(f'label stats for {data_type}')
     print(f'{Counter(y)}')
     print('==================')
 
 
-def stats(X_old, X_new, y_old, y_new):
+def stats(X_old, X_new, y_old, y_new) -> None:
     stats_data_helper(X_old, 'old')
     stats_label_helper(y_old, 'old')
     stats_data_helper(X_new, 'new')

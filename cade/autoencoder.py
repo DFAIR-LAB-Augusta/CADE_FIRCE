@@ -6,19 +6,36 @@ Functions for training a unified autoencoder or individual autoencoders for each
 
 """
 
+import logging
+import math
 import os
+import random
+import time
+import warnings
+
+import numpy as np
+import tensorflow as tf
+from keras import backend as K
+from keras.callbacks import ModelCheckpoint
+from keras.layers import Dense, Input
+from keras.models import Model
+from keras.optimizers import Adam
+from numpy.random import seed
+from sklearn.cluster import KMeans
+from tensorflow import set_random_seed
+
+import cade.data as data
+import cade.logger as logger
+import cade.utils as utils
 
 os.environ['PYTHONHASHSEED'] = '0'
-from numpy.random import seed
-import random
+
 
 random.seed(1)
 seed(1)
-from tensorflow import set_random_seed
 
 set_random_seed(2)
 
-import tensorflow as tf
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 # TensorFlow wizardry
@@ -28,33 +45,11 @@ config.gpu_options.allow_growth = True
 # Only allow a total of half the GPU memory to be allocated
 config.gpu_options.per_process_gpu_memory_fraction = 0.5
 
-import sys
-import math
-import time
-import warnings
 
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from sklearn.cluster import KMeans
-from sklearn.ensemble import RandomForestClassifier
-
-from keras import backend as K
-from keras.layers import Input, Dense
-from keras.models import Model
-from keras.optimizers import SGD, Adam
-from keras.utils import np_utils
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-
-import numpy as np
-import logging
-
-import cade.data as data
-import cade.utils as utils
-import cade.logger as logger
-
-
-class Autoencoder(object):
-    def __init__(self, dims, activation='relu', init='glorot_uniform', verbose=1):
+class Autoencoder:
+    def __init__(
+        self, dims, activation='relu', init='glorot_uniform', verbose=1
+    ) -> None:
         """
         dims: list of number of units in each layer of encoder. dims[0] is input dim, dims[-1] is units in hidden layer.
         The decoder is symmetric with encoder. So number of layers of the auto-encoder is 2*len(dims)-1
@@ -114,7 +109,7 @@ class Autoencoder(object):
 
     def train_and_save(
         self, X, weights_save_name, lr=0.001, batch_size=32, epochs=250, loss='mse'
-    ):
+    ) -> None:
         if os.path.exists(weights_save_name):
             logging.info('weights file exists, no need to train pure AE')
         else:
@@ -124,7 +119,7 @@ class Autoencoder(object):
 
             verbose = self.verbose
 
-            autoencoder, encoder = self.build()
+            autoencoder, _encoder = self.build()
 
             pretrain_optimizer = Adam(lr=lr)
 
@@ -141,7 +136,7 @@ class Autoencoder(object):
                 mode='min',
             )
 
-            hist = autoencoder.fit(
+            autoencoder.fit(
                 X,
                 X,
                 epochs=epochs,
@@ -155,7 +150,7 @@ class Autoencoder(object):
             self.train_and_save(X_old, model_save_name)
 
         K.clear_session()
-        autoencoder, encoder = self.build()
+        _autoencoder, encoder = self.build()
         encoder.load_weights(model_save_name, by_name=True)
         logging.debug(f'Load weights from {model_save_name}')
         latent = encoder.predict(X_old)
@@ -183,8 +178,8 @@ class Autoencoder(object):
         return best_acc
 
 
-class ContrastiveAE(object):
-    def __init__(self, dims, optimizer, lr, verbose=1):
+class ContrastiveAE:
+    def __init__(self, dims, optimizer, lr, verbose=1) -> None:
         self.dims = dims
         self.optimizer = optimizer(lr)
         self.verbose = verbose
@@ -200,7 +195,7 @@ class ContrastiveAE(object):
         margin,
         weights_save_name,
         display_interval,
-    ):
+    ) -> None:
         """Train an autoencoder with standard mse loss + contrastive loss.
 
         Arguments:
@@ -223,13 +218,13 @@ class ContrastiveAE(object):
             labels = tf.placeholder(tf.float32, [None])
             lambda_1_tensor = tf.placeholder(tf.float32)
             ae = Autoencoder(self.dims)
-            ae_model, encoder_model = ae.build()
+            ae_model, _encoder_model = ae.build()
 
             input_ = ae_model.get_input_at(0)
 
             # add loss function -- for efficiency and not doubling the network's weights, we pass a batch of samples and
             # make the pairs from it at the loss level.
-            left_p = tf.convert_to_tensor(list(range(0, int(batch_size / 2))), np.int32)
+            left_p = tf.convert_to_tensor(list(range(int(batch_size / 2))), np.int32)
             right_p = tf.convert_to_tensor(
                 list(range(int(batch_size / 2), batch_size)), np.int32
             )
@@ -299,19 +294,25 @@ class ContrastiveAE(object):
                             labels: batch_y[b],
                             lambda_1_tensor: lambda_1,
                         }
-                        loss1, _, aux1, contrastive_loss1, ae_loss1, dist1, encoded1 = (
-                            sess.run(
-                                [
-                                    loss,
-                                    train_op,
-                                    is_same,
-                                    contrastive_loss,
-                                    ae_loss,
-                                    dist,
-                                    ae.encoded,
-                                ],
-                                feed_dict=feed_dict,
-                            )
+                        (
+                            loss1,
+                            _,
+                            aux1,
+                            contrastive_loss1,
+                            ae_loss1,
+                            dist1,
+                            _encoded1,
+                        ) = sess.run(
+                            [
+                                loss,
+                                train_op,
+                                is_same,
+                                contrastive_loss,
+                                ae_loss,
+                                dist,
+                                ae.encoded,
+                            ],
+                            feed_dict=feed_dict,
                         )
 
                         logging.debug(f'loss1: {loss1},  aux1: {aux1}')
@@ -338,11 +339,11 @@ class ContrastiveAE(object):
                         current_loss = np.mean(loss_batch)
                         logging.info(
                             f'Epoch {epoch}: loss {current_loss} -- '
-                            + f'contrastive {np.mean(contrastive_loss_batch)} -- '
-                            + f'ae {np.mean(ae_loss_batch)} -- '
-                            + f'pairs {np.mean(np.sum(np.mean(aux_batch)))} : '
-                            + f'{np.mean(np.sum(1 - np.mean(aux_batch)))} -- '
-                            + f'time {time.time() - epoch_time}'
+                            f'contrastive {np.mean(contrastive_loss_batch)} -- '
+                            f'ae {np.mean(ae_loss_batch)} -- '
+                            f'pairs {np.mean(np.sum(np.mean(aux_batch)))} : '
+                            f'{np.mean(np.sum(1 - np.mean(aux_batch)))} -- '
+                            f'time {time.time() - epoch_time}'
                         )
                         loss_batch, aux_batch = [], []
                         contrastive_loss_batch, ae_loss_batch = [], []

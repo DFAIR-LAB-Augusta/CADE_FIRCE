@@ -6,39 +6,41 @@ Functions for evaluating drifting detection and report classification results.
 
 """
 
-import os
-
-os.environ['PYTHONHASHSEED'] = '0'
-from numpy.random import seed
-import random
-
-random.seed(1)
-seed(1)
-from tensorflow import set_random_seed
-
-set_random_seed(2)
-
-import sys
 import logging
-import copy
-import traceback
-import numpy as np
+import os
 import pickle
-
-from collections import Counter, OrderedDict
-from tqdm import tqdm
-from sklearn.metrics import accuracy_score, confusion_matrix
-from keras import backend as K
-from keras.models import load_model
+import random
+import sys
+import traceback
+from collections import OrderedDict
 
 import matplotlib.pyplot as plt
+import numpy as np
+from keras import backend as k
+from keras.models import load_model
+from numpy.random import seed
+from sklearn.metrics import accuracy_score, confusion_matrix
+from tensorflow import set_random_seed
+from tqdm import tqdm
 
 import cade.utils as utils
 
+os.environ['PYTHONHASHSEED'] = '0'
+
+
+random.seed(1)
+seed(1)
+
+set_random_seed(2)
+
 
 def report_classification_results(
-    model_path, X_new, y_new, classify_results_all_path, classify_results_simple_path
-):
+    model_path: str,
+    X_new,
+    y_new,
+    classify_results_all_path,
+    classify_results_simple_path,
+) -> None:
     """Report wrongly classified samples and probabilities for classification model.
 
     Arguments:
@@ -62,9 +64,9 @@ def report_classification_results(
 
 def report_classification_results_helper(
     model_path, X_new, y_new, report_file_path, only_wrongly_samples
-):
+) -> None:
     if 'h5' in model_path:
-        K.clear_session()
+        k.clear_session()
         clf_model = load_model(model_path)
         preds = clf_model.predict(X_new)
         y_new_pred = np.argmax(preds, axis=1)
@@ -95,16 +97,16 @@ def report_classification_results_helper(
 
 def combine_classify_and_detect_result(
     classify_results_all_path, detect_results_all_path, combined_report_path
-):
+) -> None:
     """combine classification and detect results as a final result"""
     if not os.path.exists(combined_report_path):
         with open(combined_report_path, 'w') as fout:
             fout.write(
-                f'sample_idx,real_label,pred_label,closest_label,is_drift,pred_prob,min_distance,min_anomaly_score\n'
+                'sample_idx,real_label,pred_label,closest_label,is_drift,pred_prob,min_distance,min_anomaly_score\n'
             )
-            with open(classify_results_all_path, 'r') as fin1:
+            with open(classify_results_all_path) as fin1:
                 next(fin1)
-                with open(detect_results_all_path, 'r') as fin2:
+                with open(detect_results_all_path) as fin2:
                     next(fin2)
                     for line1, line2 in zip(fin1, fin2):
                         idx, real, pred, pred_prob = line1.strip().split(',')
@@ -124,10 +126,11 @@ def evaluate_newfamily_as_drift_by_distance(
     save_ordered_dis_path,
     dist_effort_pr_value_fig_path,
     dist_one_by_one_check_result_path,
-):
+) -> None:
     if 'drebin' in dataset_name:
         newfamily = (
-            7  # since we adjust all the new family to label 7, no matter it is 0~7.
+            # since we adjust all the new family to label 7, no matter it is 0~7.
+            7
         )
     elif 'IDS' in dataset_name:
         newfamily = 3
@@ -137,10 +140,10 @@ def evaluate_newfamily_as_drift_by_distance(
     y_closest = []
     y_real = []
     y_pred = []
-    with open(combined_report_path, 'r') as f:
+    with open(combined_report_path) as f:
         next(f)
-        for idx, line in enumerate(f):
-            sample_idx, real, pred, closest, is_drift, prob, min_dis, min_score = (
+        for _idx, line in enumerate(f):
+            sample_idx, real, pred, closest, _is_drift, _prob, min_dis, min_score = (
                 read_combined_report_line(line)
             )
             y_closest.append(closest)
@@ -163,8 +166,9 @@ def evaluate_newfamily_as_drift_by_distance(
     )
     with open(save_ordered_dis_path, 'w') as f:
         f.write('sample_idx,real_label,min_dis\n')
-        for k, v in ordered_sample_result_dict.items():
-            f.write(f'{k},{v[0]},{v[3]}\n')
+        f.writelines(
+            f'{k},{v[0]},{v[3]}\n' for k, v in ordered_sample_result_dict.items()
+        )
 
     plot_inspection_effort_pr_value_by_dist(
         ordered_sample_result_dict,
@@ -189,7 +193,7 @@ def evaluate_newfamily_as_drift_by_distance(
 
 def plot_inspection_effort_pr_value_by_dist(
     sorted_samples, newfamily, total_new_family, fig_path, pr_result_path
-):
+) -> None:
     TP, FP = 0, 0
     precision_list, recall_list = [], []
     inspection_cnt_list = range(1, len(sorted_samples) + 1)
@@ -244,7 +248,7 @@ def plot_inspection_effort_pr_value_by_dist(
 
 def append_accuracy_result_to_final_report(
     acc_classifier, acc_closest, dist_one_by_one_check_result_path
-):
+) -> None:
     with open(dist_one_by_one_check_result_path, 'a') as f:
         f.write('\n====================================\n')
         f.write(f'classifier acc on testing set: {acc_classifier}\n')

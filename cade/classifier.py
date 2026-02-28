@@ -6,58 +6,43 @@ Functions for building a target classifier.
 
 """
 
+import logging
 import os
+import pickle
+import random
+
+import matplotlib.pyplot as plt
+import numpy as np
+from keras import backend as K
+from keras.callbacks import ModelCheckpoint
+from keras.layers import Dense, Dropout, Input
+from keras.models import Model, load_model
+from keras.optimizers import Adam
+from keras.utils import np_utils
+from numpy.random import seed
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.model_selection import train_test_split
+from tensorflow import set_random_seed
+
+import cade.utils as utils
+from cade.logger import LoggingCallback
 
 os.environ['PYTHONHASHSEED'] = '0'
-from numpy.random import seed
-import random
+
 
 random.seed(1)
 seed(1)
-from tensorflow import set_random_seed
 
 set_random_seed(2)
 
-from keras import backend as K
-import tensorflow as tf
 
-import sys
-import json
-import warnings
-import logging
-import pickle
-from datetime import datetime
-import traceback
-import seaborn as sns
-
-from collections import Counter, OrderedDict
-
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, confusion_matrix
-from sklearn.cluster import KMeans
-from sklearn.ensemble import RandomForestClassifier
-
-from keras.layers import Input, Dense, Dropout
-from keras.models import Model, Sequential, model_from_json, load_model
-from keras.optimizers import SGD, Adam
-from keras.initializers import VarianceScaling
-from keras.engine.topology import Layer, InputSpec
-from keras.utils import np_utils, plot_model
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-from cade.logger import LoggingCallback
-import cade.utils as utils
-
-
-class MLPClassifier(object):
+class MLPClassifier:
     """a MLP classifier only for multi-class classification."""
 
     def __init__(
         self, dims, model_save_name, dropout=0.2, activation='relu', verbose=1
-    ):  # 1 print logs, 0 no logs.
+    ) -> None:  # 1 print logs, 0 no logs.
         self.dims = dims  # e.g., [1347, 100, 30, 7]
         self.model_save_name = model_save_name
         self.act = activation
@@ -122,7 +107,7 @@ class MLPClassifier(object):
             logging.debug(f'y_train onehot: {y_train_onehot.shape}')
             logging.debug(f'y_val onehot: {y_val_onehot.shape}')
 
-            if retrain == True:
+            if retrain:
                 model = self.build()
 
                 # configure and train model.
@@ -161,7 +146,7 @@ class MLPClassifier(object):
                 fig, ax = plt.subplots()
                 ax.plot(history.history['loss'], '-b', label='Training')
                 ax.plot(history.history['val_loss'], '--r', label='Testing')
-                leg = ax.legend()
+                ax.legend()
                 plt.ylabel('loss')
                 plt.xlabel('epoch')
                 plt.savefig(
@@ -174,11 +159,11 @@ class MLPClassifier(object):
             val_score = clf.evaluate(x_val, y_val_onehot)
             val_acc = val_score[1]
             logging.info(
-                'MLP validation set %s: %.2f%%' % (clf.metrics_names[1], val_acc * 100)
+                f'MLP validation set {clf.metrics_names[1]}: {val_acc * 100:.2f}%'
             )
         else:  # do not split as train and validation, used for building the approximation_loose model
             y_old_onehot = np_utils.to_categorical(y_old)
-            if retrain == True:
+            if retrain:
                 model = self.build()
                 # configure and train model.
                 pretrain_optimizer = Adam(lr=lr)
@@ -212,7 +197,7 @@ class MLPClassifier(object):
                 )
                 val_acc = np.max(history.history['acc'])
                 logging.info('MLP training set acc: %.2f%%' % (val_acc * 100))
-                fig, ax = plt.subplots()
+                _fig, ax = plt.subplots()
                 ax.plot(history.history['loss'], '-b')
                 plt.ylabel('loss')
                 plt.xlabel('epoch')
@@ -235,9 +220,7 @@ class MLPClassifier(object):
         new_acc = accuracy_score(y_new, y_pred)
         cm = confusion_matrix(y_new, y_pred)
 
-        logging.info(
-            'MLP testing set %s: %.2f%%' % (clf.metrics_names[1], new_acc * 100)
-        )
+        logging.info(f'MLP testing set {clf.metrics_names[1]}: {new_acc * 100:.2f}%')
         logging.info(f'MLP confusion matrix: \n {cm}')
 
         utils.plot_confusion_matrix(
@@ -247,12 +230,12 @@ class MLPClassifier(object):
         return y_pred, new_acc
 
 
-class RFClassifier(object):
+class RFClassifier:
     """RandomForest classifier wrapper.
     It internally supports multi-class classification. So don't need to one-hot encode the labels.
     """
 
-    def __init__(self, rf_save_path, tree=100):
+    def __init__(self, rf_save_path, tree=100) -> None:
         self.rf_save_path = rf_save_path
         self.tree = tree
 
@@ -272,7 +255,7 @@ class RFClassifier(object):
             X_old, y_old, test_size=test_size, random_state=42, shuffle=True
         )
 
-        if retrain == True:
+        if retrain:
             model = RandomForestClassifier(n_estimators=self.tree, random_state=0)
             model.fit(x_train, y_train)
             with open(self.rf_save_path, 'wb') as f:

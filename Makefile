@@ -57,6 +57,9 @@ fmt: ## Format with ruff
 lint: ## Lint with ruff
 	$(UV) run $(RUFF) check .
 
+lint-fix: ## Lint with ruff and apply safe auto-fixes
+	uv run $(RUFF) check . --fix
+
 style: fmt lint ## Format + lint
 
 clean: ## Remove common caches/artifacts

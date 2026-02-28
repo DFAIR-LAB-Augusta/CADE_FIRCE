@@ -12,18 +12,15 @@ For "02_20_2018.csv" file, it has 4 extra features in the beninning (Flow ID, Sr
 
 """
 
-import os, sys
+import os
 import traceback
-import numpy as np
-
-
+from collections import Counter
 from datetime import datetime
 from timeit import default_timer as timer
-from collections import Counter
-from tqdm import tqdm
+
+import numpy as np
 
 from cade.config import config
-
 
 RAW_DATA_PATH = config['IDS2018']
 SAVE_PATH = config['IDS2018_clean']
@@ -61,7 +58,7 @@ TRAFFIC_LABEL = {
 }
 
 
-def clean_single_file(filename, is_specific=False):
+def clean_single_file(filename, is_specific=False) -> None:
     traffic_contain_null_count = 0
     traffic_contain_infinity_count = 0
     traffic_invalid_timestamp_count = 0
@@ -71,7 +68,7 @@ def clean_single_file(filename, is_specific=False):
     print(f'cleaning file {filename}...')
 
     """remove traffic with NaN and Infinity values, read the file content into a numpy array."""
-    with open(filename, 'r') as f:
+    with open(filename) as f:
         date_str = (
             filename.replace('.csv', '').replace('_', '/').replace(RAW_DATA_PATH, '')
         )
@@ -144,7 +141,7 @@ def clean_single_file(filename, is_specific=False):
     print('===================\n')
 
 
-def stats():
+def stats() -> None:
     for file in NORMAL_FILES + SPECIFIC_FILES:
         print(f'stats for file: {file}')
         file_path = os.path.join(SAVE_PATH, file + '.npz')
@@ -156,7 +153,7 @@ def stats():
         print(f'semantic labels: {semantic_labels}')
 
 
-def main():
+def main() -> None:
     start = timer()
     for file in NORMAL_FILES:
         file_path = os.path.join(RAW_DATA_PATH, file + '.csv')

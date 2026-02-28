@@ -19,8 +19,9 @@ IDS:
 import os
 
 os.environ['PYTHONHASHSEED'] = '0'
-from numpy.random import seed
 import random
+
+from numpy.random import seed
 
 random.seed(1)
 seed(1)
@@ -28,21 +29,22 @@ from tensorflow import set_random_seed
 
 set_random_seed(2)
 
-import os, sys
-import numpy as np
-import statistics
-import traceback
 import logging
+import os
+import sys
+import traceback
 from timeit import default_timer as timer
+
+import numpy as np
+import tensorflow as tf
 from keras import backend as K
 from tqdm import tqdm
-import tensorflow as tf
 
 import cade.data as data
-import cade.utils as utils
 import cade.explain_by_distance as explain_dis
-from cade.logger import init_log
+import cade.utils as utils
 from cade.autoencoder import Autoencoder
+from cade.logger import init_log
 
 families = [
     'FakeInstaller',
@@ -68,7 +70,7 @@ def load_necessary_model_and_data(X_train, dataset, lambda_1, exp_method):
     elif 'IDS' in dataset:
         cae_dims = [X_train.shape[1], 64, 32, 16, 3]
         cae_weights_path = f'models/{dataset}/cae_83-64-32-16-3_lr0.0001_b512_e250_m10.0_lambda0.1_weights.h5'
-        feature_file = f'data/IDS_83_features.txt'
+        feature_file = 'data/IDS_83_features.txt'
     elif 'bluehex' in dataset:
         cae_dims = [X_train.shape[1], 1024, 256, 64, 5]
         cae_weights_path = f'models/{dataset}/cae_1857-1024-256-64-5_lr0.0001_b256_e250_m10.0_weights.h5'
@@ -78,7 +80,7 @@ def load_necessary_model_and_data(X_train, dataset, lambda_1, exp_method):
 
     K.clear_session()  # be careful with this it may clean up previous loaded models.
     ae = Autoencoder(cae_dims)
-    ae_model, encoder_model = ae.build()
+    _ae_model, encoder_model = ae.build()
     encoder_model.load_weights(cae_weights_path, by_name=True)
     if 'approximation' in exp_method or 'distance' in exp_method:
         mask_list = np.load(f'reports/{dataset}/mask_{exp_method}_{lambda_1}.npz')[
@@ -89,7 +91,7 @@ def load_necessary_model_and_data(X_train, dataset, lambda_1, exp_method):
 
     features = []
     if feature_file is not None:
-        with open(feature_file, 'r') as fin:
+        with open(feature_file) as fin:
             for line in fin:
                 features.append(line.strip())
 
@@ -129,7 +131,7 @@ def get_important_fea_and_distance(
     use_gumbel,
     save_distance_mm1_important_fea_len_file,
     save_result_path,
-):
+) -> None:
 
     if exp_method != 'distance_mm1':
         if os.path.exists(save_distance_mm1_important_fea_len_file):
@@ -180,7 +182,7 @@ def get_important_fea_and_distance(
             tmp = np.sum(mask)
             if not np.isnan(tmp):
                 prod = x * mask
-                ranked_prod_value = np.sort(prod, kind='mergesort', axis=None)[::-1]
+                np.sort(prod, kind='mergesort', axis=None)[::-1]
                 valid_n = len(np.where(prod > 0)[0])
                 valid_n = min(valid_n, important_feas_len_list[idx])
 
@@ -196,7 +198,7 @@ def get_important_fea_and_distance(
                     # but we keep m = m1 = 1 for simplicity (less features).
                     important_feas = np.where(mask == 1)[0]
                 else:
-                    ranked_mask = np.sort(mask, kind='mergesort', axis=None)[
+                    np.sort(mask, kind='mergesort', axis=None)[
                         ::-1
                     ]  # bigger means more important feature
                     valid_n = len(np.where(mask == 1)[0])
@@ -240,12 +242,12 @@ def get_important_fea_and_distance(
                         f.write(
                             f'feature index,sample {idx} important feature,original value,avg value in testing set(real family),avg value in training set(closest family),avg value in both train and test set(closest family),closest sample value\n'
                         )
-                        for fea in important_feas:
-                            f.write(
-                                f'{fea},{features[fea]},{x[fea]:e},{np.mean(X_real_family[:, fea]):e},'
-                                + f'{np.mean(X_train_family_dict[closest_family][:, fea]):e},'
-                                + f'{np.mean(X_closest_family_all[:, fea]):e},{closest_sample_family_dict[closest_family][fea]:e}\n'
-                            )
+                        f.writelines(
+                            f'{fea},{features[fea]},{x[fea]:e},{np.mean(X_real_family[:, fea]):e},'
+                            f'{np.mean(X_train_family_dict[closest_family][:, fea]):e},'
+                            f'{np.mean(X_closest_family_all[:, fea]):e},{closest_sample_family_dict[closest_family][fea]:e}\n'
+                            for fea in important_feas
+                        )
 
             """ the chosen method: perturb the important features and craft a new sample """
             x_new = np.copy(x)
@@ -274,7 +276,7 @@ def get_important_fea_and_distance(
     original_dis = np.sqrt(np.sum(np.square(latent_x - Centroid_arr), axis=1))
     perturbed_dis = np.sqrt(np.sum(np.square(latent_x_perturb - Centroid_arr), axis=1))
 
-    success_idx = np.where((perturbed_dis <= lowerbound_list) == True)[0]
+    success_idx = np.where(perturbed_dis <= lowerbound_list)[0]
     success = len(success_idx)
 
     if exp_method == 'distance_mm1':
@@ -301,8 +303,7 @@ def get_important_fea_and_distance(
 
     with open(save_distance_mm1_important_fea_len_file, 'w') as f:
         logging.debug(f'important_feas_len_list len: {len(important_feas_len_list)}')
-        for fea_len in important_feas_len_list:
-            f.write(f'{fea_len}\n')
+        f.writelines(f'{fea_len}\n' for fea_len in important_feas_len_list)
 
 
 def preprocess_training_info(
@@ -314,8 +315,8 @@ def preprocess_training_info(
 
     # the load_training_info() is actually very time consuming, so just load it once for each closest family here.
     for family in np.unique(drift_samples_closest):
-        z_train, z_closest_family, centroid, dis_to_centroid, mad = load_training_info(
-            training_info_for_detect_path, family
+        _z_train, _z_closest_family, centroid, dis_to_centroid, mad = (
+            load_training_info(training_info_for_detect_path, family)
         )
         lowerbound = mad * 3.5 + np.median(dis_to_centroid)
         dis_to_centroid_inds = np.array(dis_to_centroid).argsort()  # distance ascending
@@ -329,7 +330,7 @@ def preprocess_training_info(
     return family_info_dict, X_train_family_dict, closest_sample_family_dict
 
 
-def write_result_to_file(single_list, name, filepath, mode):
+def write_result_to_file(single_list, name, filepath, mode) -> None:
     with open(filepath, mode) as f:
         try:
             avg = np.average(single_list)
@@ -358,7 +359,7 @@ def get_backpropagation_important_features(
     cae_weights_path,
     important_feas_len_list,
     save_result_path,
-):
+) -> None:
     """G = d(f(x) - f(c)) / dx, sum G over rows (or maybe columns), then rank G to get the feature importance ranking"""
     lowerbound_list = []
     s = timer()
@@ -386,7 +387,7 @@ def get_backpropagation_important_features(
 
         start = timer()
         # original_importance could be positive or negative
-        important_feas_idx, abs_importance, original_importance = (
+        important_feas_idx, _abs_importance, original_importance = (
             backpropagation_gradients(
                 idx,
                 x,
@@ -415,7 +416,7 @@ def get_backpropagation_important_features(
                 elif 'IDS' in dataset:
                     """ use the sample (closest to centroid) feature value"""
                     if original_importance[i] > 0:
-                        perturbed_value = closest_sample_family_dict[family][i]
+                        closest_sample_family_dict[family][i]
                         valid_n += 1
 
         gradient_valid_important_feas_len_list.append(valid_n)
@@ -430,7 +431,7 @@ def get_backpropagation_important_features(
     encoder_model.load_weights(cae_weights_path, by_name=True)
     latent_x_perturb = encoder_model.predict(X_perturb_arr)
     perturbed_dis = np.sqrt(np.sum(np.square(latent_x_perturb - Centroid_arr), axis=1))
-    success = len(np.where((perturbed_dis <= lowerbound_list) == True)[0])
+    success = len(np.where(perturbed_dis <= lowerbound_list)[0])
     write_result_to_file(
         perturbed_dis, 'gradient perturbed distance', save_result_path, 'a'
     )
@@ -485,7 +486,7 @@ def backpropagation_gradients(
 
 def read_feas_len_from_file(save_distance_mm1_important_fea_len_file):
     important_feas_len_list = []
-    with open(save_distance_mm1_important_fea_len_file, 'r') as f:
+    with open(save_distance_mm1_important_fea_len_file) as f:
         for line in f:
             important_feas_len_list.append(int(line.strip()))
     return important_feas_len_list
@@ -502,7 +503,7 @@ def eval_random_select_important_feas(
     closest_sample_family_dict,
     encoder_model,
     save_result_path,
-):
+) -> None:
     """baseline 3: randomly choose the same number of important features and craft a new sample"""
     if os.path.exists(save_distance_mm1_important_fea_len_file):
         s = timer()
@@ -511,7 +512,7 @@ def eval_random_select_important_feas(
         )
         random_dis_array_list = []
         total_success_random = 0
-        for random_cnt in tqdm(range(RANDOM_TRY)):
+        for _random_cnt in tqdm(range(RANDOM_TRY)):
             lowerbound_list = []
             for idx, sample_idx, family in zip(
                 range(len(drift_samples_idx_list)),
@@ -549,7 +550,7 @@ def eval_random_select_important_feas(
                 np.sum(np.square(latent_x_random - Centroid_arr), axis=1)
             )
 
-            success_random = len(np.where((random_dis <= lowerbound_list) == True)[0])
+            success_random = len(np.where(random_dis <= lowerbound_list)[0])
             total_success_random += success_random
             random_dis_array_list.append(random_dis)
 
@@ -584,7 +585,7 @@ def eval_random_select_important_feas(
 if __name__ == '__main__':
     if len(sys.argv) != 6:
         logging.error(
-            f'usage example: python -u evaluate_explanation_by_distance.py drebin_new_7 distance_mm1 0.001 1 0.1'
+            'usage example: python -u evaluate_explanation_by_distance.py drebin_new_7 distance_mm1 0.001 1 0.1'
         )
         sys.exit(-1)
 
@@ -611,10 +612,7 @@ if __name__ == '__main__':
 
     init_log(log_path, level=logging.INFO)
 
-    if use_gumbel == 1:
-        gumble_flag = 'with'
-    else:
-        gumble_flag = 'without'
+    gumble_flag = 'with' if use_gumbel == 1 else 'without'
 
     save_result_path = f'{REPORT_FOLDER}/{dataset}-{exp_method}-lambda-{lambda_1}-temp-{temp}-{gumble_flag}-gumble.txt'
     # other explanation method would load this file to determine how many important features to pick
@@ -645,7 +643,7 @@ if __name__ == '__main__':
         'reports',
         dataset,
         'intermediate',
-        f'mlp_training_info_for_detect_m10.0_lambda0.1.npz',
+        'mlp_training_info_for_detect_m10.0_lambda0.1.npz',
     )
     family_info_dict, X_train_family_dict, closest_sample_family_dict = (
         preprocess_training_info(

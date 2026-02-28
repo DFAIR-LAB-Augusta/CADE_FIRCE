@@ -8,26 +8,32 @@ exp = x * mask
 
 Only use the target x to solve the mask, didn't use the x + noise (as the perturbation might not be a good choice).
 
-"""
+"""  # noqa: E501
 
-import os, sys
+import logging
+import os
+import random
+import warnings
+
+import numpy as np
+import tensorflow as tf
+from keras import backend as K
+from keras.losses import binary_crossentropy
+from numpy.random import seed
+from sklearn.metrics import accuracy_score
+from tensorflow import set_random_seed
 
 os.environ['PYTHONHASHSEED'] = '0'
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'  # so the IDs match nvidia-smi
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
-from numpy.random import seed
-import random
 
 random.seed(1)
 seed(1)
 
-from tensorflow import set_random_seed
 
 set_random_seed(2)
 
-from keras import backend as K
-import tensorflow as tf
 
 K.tensorflow_backend._get_available_gpus()
 
@@ -39,20 +45,11 @@ config.gpu_options.per_process_gpu_memory_fraction = 0.5
 # create a session with the above options specified
 K.tensorflow_backend.set_session(tf.Session(config=config))
 
-import sys
-import logging
-
-import numpy as np
-import tensorflow as tf
-from keras.losses import binary_crossentropy
-from sklearn.metrics import accuracy_score
-
-import warnings
 
 warnings.filterwarnings('ignore')
 
 
-class OptimizeExp(object):
+class OptimizeExp:
     def __init__(
         self,
         input_shape,
@@ -64,7 +61,7 @@ class OptimizeExp(object):
         lr,
         regularizer,
         model_file,
-    ):
+    ) -> None:
         """
         Args:
             input_shape: the input shape for an input image
@@ -94,7 +91,7 @@ class OptimizeExp(object):
         loss_l2 = tf.sqrt(tf.reduce_sum(tf.square(tensor)))
         return loss_l1 + loss_l2
 
-    def build_opt_func(self, input_shape, mask_shape):
+    def build_opt_func(self, input_shape, mask_shape) -> None:
         # use tf.variable_scope and tf.get_variable() to achieve "variable sharing"
         # AUTO_REUSE: we create variables if they do not exist, and return them otherwise
         with tf.variable_scope('mask', reuse=tf.AUTO_REUSE):
@@ -258,7 +255,9 @@ class OptimizeExp(object):
                         lambda_1 = lambda_1 * lambda_multiplier
                         lambda_up_counter = 0
                         logging.debug(
-                            'Updating lambda1 to %.8f to %.8f' % (self.lambda_1)
+                            'Updating lambda1 to {:.8f} to {:.8f}'.format(
+                                *self.lambda_1
+                            )
                         )
                 else:
                     lambda_down_counter += 1
@@ -266,7 +265,9 @@ class OptimizeExp(object):
                         lambda_1 = lambda_1 / lambda_multiplier
                         lambda_down_counter = 0
                         logging.debug(
-                            'Updating lambda1 to %.8f to %.8f' % (self.lambda_1)
+                            'Updating lambda1 to {:.8f} to {:.8f}'.format(
+                                *self.lambda_1
+                            )
                         )
 
                 if (np.abs(loss - loss_last) < iteration_thredshold) or (
@@ -344,6 +345,6 @@ class OptimizeExp(object):
                         loss_sparse_mask_best = loss_sparse_mask
                         mask_best = sess.run([self.mask_normalized])[0]
         if mask_best is None:
-            logging.info(f'did NOT find the best mask')
+            logging.info('did NOT find the best mask')
 
         return mask_best

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 utils.py
 ~~~~~~~~
@@ -8,30 +6,29 @@ Helper functions for setting up the environment.
 
 """
 
+import argparse
+import logging
 import os
+import random
+import sys
+import traceback
+
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from numpy.random import seed
+from tensorflow import set_random_seed
 
 os.environ['PYTHONHASHSEED'] = '0'
-from numpy.random import seed
-import random
+
 
 random.seed(1)
 seed(1)
-from tensorflow import set_random_seed
 
 set_random_seed(2)
 
-import sys
-import logging
-import argparse
-import numpy as np
-import traceback
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-from tqdm import tqdm
-
-
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse the command line configuration for a particular run.
 
     Raises:
@@ -65,7 +62,7 @@ def parse_args():
         default=0,
         type=int,
         choices=[0, 1],
-        help='whether to use the standard autoencoder (1) or contrastive autoencoder (0).',
+        help='whether to use the standard autoencoder (1) or contrastive autoencoder (0).',  # noqa: E501
     )
     p.add_argument(
         '--quiet',
@@ -75,18 +72,19 @@ def parse_args():
         help='whether to print the debugging logs.',
     )
 
-    # arguments for the Contrastive Autoencoder and drift detection (build on the samples of top 7 families for example)
+    # arguments for the Contrastive Autoencoder and drift detection (build on the samples of top 7 families for example)  # noqa: E501
     p.add_argument(
         '--cae-hidden',
         help='The hidden layers of the giant autoencoder, example: "512-128-32", \
-                         which in drebin_new_7 would make the architecture as "1340-512-128-32-7"',
+                         which in drebin_new_7 would make the architecture as "1340-512-128-32-7"',  # noqa: E501
     )
     p.add_argument(
         '--cae-batch-size',
         default=64,
         type=int,
-        help='Contrastive Autoencoder batch_size, use a bigger size for larger training set \
-                        (when training, one batch only has 64/2=32 samples, another 32 samples are used for comparison).',
+        help='Contrastive Autoencoder batch_size, '
+        'use bigger size for larger training set \
+                        (when training, one batch only has 64/2=32 samples, another 32 samples are used for comparison).',  # noqa: E501
     )
     p.add_argument(
         '--cae-lr',
@@ -107,26 +105,26 @@ def parse_args():
         '--similar-ratio',
         default=0.25,
         type=float,
-        help='Ratio of similar samples in a batch when training contrastive autoencoder.',
+        help='Ratio of similar samples in a batch when training contrastive autoencoder.',  # noqa: E501
     )
     p.add_argument(
         '--margin',
         default=10.0,
         type=float,
-        help='Maximum margins of dissimilar samples when training contrastive autoencoder.',
+        help='Maximum margins of dissimilar samples when training contrastive autoencoder.',  # noqa: E501
     )
     p.add_argument(
         '--display-interval',
         default=10,
         type=int,
-        help='Show logs about loss and other information every xxx epochs when training contrastive autoencoder.',
+        help='Show logs about loss and other information every xxx epochs when training contrastive autoencoder.',  # noqa: E501
     )
 
     p.add_argument(
         '--mad-threshold',
         default=3.5,
         type=float,
-        help='The threshold for MAD outlier detection, choose one from 2, 2.5, 3 or 3.5',
+        help='The threshold for MAD outlier detection, choose one from 2, 2.5, 3 or 3.5',  # noqa: E501
     )
 
     # arguments for explaining a drift sample
@@ -153,7 +151,7 @@ def parse_args():
     )
     p.add_argument(
         '--mlp-hidden',
-        help='The hidden layers of the MLP classifier, example: "100-30", which in drebin_new_7 case would make the architecture as 1340-100-30-7',
+        help='The hidden layers of the MLP classifier, example: "100-30", which in drebin_new_7 case would make the architecture as 1340-100-30-7',  # noqa: E501
     )
     p.add_argument(
         '--mlp-batch-size', default=32, type=int, help='MLP classifier batch_size.'
@@ -196,7 +194,9 @@ def parse_args():
     return args
 
 
-def get_model_dims(model_name, input_layer_num, hidden_layer_num, output_layer_num):
+def get_model_dims(
+    model_name: str, input_layer_num: int, hidden_layer_num: str, output_layer_num: int
+) -> list[int]:
     """convert hidden layer arguments to the architecture of a model (list)
 
     Arguments:
@@ -207,7 +207,7 @@ def get_model_dims(model_name, input_layer_num, hidden_layer_num, output_layer_n
 
     Returns:
         [list] -- List represented model architecture.
-    """
+    """  # noqa: E501
     try:
         if '-' not in hidden_layer_num:
             dims = [input_layer_num, int(hidden_layer_num), output_layer_num]
@@ -225,30 +225,25 @@ def get_model_dims(model_name, input_layer_num, hidden_layer_num, output_layer_n
     return dims
 
 
-def create_folder(name):
+def create_folder(name: str) -> None:
     if not os.path.exists(name):
         os.makedirs(name)
 
 
-def create_parent_folder(file_path):
+def create_parent_folder(file_path: str) -> None:
     if not os.path.exists(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))
 
 
-def redo_flag(args, path_same, path_diff):
-    flag = True
-
-    if 'newfamily' in args.data:
-        if os.path.exists(path_diff):
-            flag = False
-    elif 'evolve' in args.data:
-        if os.path.exists(path_same) and os.path.exists(path_diff):
-            flag = False
-
-    return flag
+def redo_flag(args, path_same, path_diff) -> bool:
+    return not ('newfamily' in args.data and os.path.exists(path_diff)) or (
+        'evolve' in args.data
+        and os.path.exists(path_same)
+        and os.path.exists(path_diff)
+    )
 
 
-def get_cluster_acc(y_true, y_pred):
+def get_cluster_acc(y_true: np.ndarray, y_pred: np.ndarray) -> float | np.ndarray:
     """
     Calculate clustering accuracy.
     # Arguments
@@ -270,7 +265,9 @@ def get_cluster_acc(y_true, y_pred):
     return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
 
-def plot_confusion_matrix(cm, y_pred, y_true, dataset_name, newfamily, save_fig_name):
+def plot_confusion_matrix(
+    cm: np.ndarray, y_pred, y_true, dataset_name, newfamily, save_fig_name: str
+) -> None:
     logging.getLogger('matplotlib.font_manager').disabled = True
     fig, ax = plt.subplots()
     ax = sns.heatmap(cm, annot=True, fmt='d', annot_kws={'size': 12})

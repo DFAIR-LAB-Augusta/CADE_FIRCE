@@ -11,32 +11,31 @@ Two design options:
 1. use mask only, use mask_exp_by_distance_mask_only.py
 2. use mask * m1, use mask_exp_by_distance_mask_m1.py
 
-"""
+"""  # noqa: E501
 
-import os
-
-os.environ['PYTHONHASHSEED'] = '0'
-from numpy.random import seed
-import random
-
-random.seed(1)
-seed(1)
-from tensorflow import set_random_seed
-
-set_random_seed(2)
-
-import traceback
 import logging
+import os
+import random
 import re
+import traceback
+
 import numpy as np
 import tensorflow as tf
-
-from timeit import default_timer as timer
-from tqdm import tqdm
 from keras import backend as K
+from numpy.random import seed
+from tensorflow import set_random_seed
+from tqdm import tqdm
 
 import cade.utils as utils
 from cade.autoencoder import Autoencoder
+
+os.environ['PYTHONHASHSEED'] = '0'
+
+
+random.seed(1)
+seed(1)
+
+set_random_seed(2)
 
 
 def explain_drift_samples_per_instance(
@@ -49,13 +48,13 @@ def explain_drift_samples_per_instance(
     training_info_for_detect_path,
     cae_weights_path,
     mask_file_path,
-):
+) -> None:
     if os.path.exists(mask_file_path):
         logging.info(
             f'explanation result file {mask_file_path} exists, no need to run explanation module'
         )
     else:
-        drift_samples_idx_list, drift_samples_real_labels, drift_samples_closest = (
+        drift_samples_idx_list, _drift_samples_real_labels, drift_samples_closest = (
             get_drift_samples_to_explain(one_by_one_check_result_path)
         )
 
@@ -67,7 +66,7 @@ def explain_drift_samples_per_instance(
 
         family_centroid_dict = {}
         for family in np.unique(drift_samples_closest):
-            z_train, z_closest_family, centroid, dis_to_centroid, mad = (
+            _z_train, _z_closest_family, centroid, dis_to_centroid, mad = (
                 load_training_info(training_info_for_detect_path, family)
             )
             distance_lowerbound = mad * mad_threshold + np.median(dis_to_centroid)
@@ -126,8 +125,8 @@ def explain_drift_samples_per_instance(
 
 
 def get_drift_samples_to_explain(one_by_one_check_result_path):
-    pattern = re.compile('best inspection count: \d+')
-    with open(one_by_one_check_result_path, 'r') as f:
+    pattern = re.compile(r'best inspection count: \d+')
+    with open(one_by_one_check_result_path) as f:
         inspect_cnt = int(
             re.findall(pattern, f.read())[0].replace('best inspection count: ', '')
         )
@@ -137,7 +136,7 @@ def get_drift_samples_to_explain(one_by_one_check_result_path):
         [],
         [],
     )
-    with open(one_by_one_check_result_path, 'r') as f:
+    with open(one_by_one_check_result_path) as f:
         next(f)
         for idx, line in enumerate(f):
             if idx < inspect_cnt:
@@ -153,9 +152,10 @@ def get_drift_samples_to_explain(one_by_one_check_result_path):
 
 
 def load_encoder(cae_dims, cae_weights_path):
-    K.clear_session()  # be careful with this it may clean up previous loaded models.
+    # be careful with this it may clean up previous loaded models.
+    K.clear_session()
     ae = Autoencoder(cae_dims)
-    ae_model, encoder_model = ae.build()
+    _ae_model, encoder_model = ae.build()
     encoder_model.load_weights(cae_weights_path, by_name=True)
     return encoder_model
 
@@ -195,7 +195,8 @@ def explain_instance(
     OPTIMIZER = tf.train.AdamOptimizer
     INITIALIZER = tf.keras.initializers.RandomUniform(minval=0, maxval=1)
     LR = 1e-2  # learning rate
-    REGULARIZER = 'elasticnet'  # a regularized regression method that linearly combines the L1 and L2 penalties of the lasso and ridge methods.
+    # a regularized regression method that linearly combines the L1 and L2 penalties of the lasso and ridge methods.
+    REGULARIZER = 'elasticnet'
     EXP_EPOCH = 250
     EXP_DISPLAY_INTERVAL = 10  # print middle result every k epochs
     EXP_LAMBDA_PATIENCE = 20

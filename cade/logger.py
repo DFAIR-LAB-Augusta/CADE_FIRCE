@@ -1,56 +1,36 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-this module provide the log init function, running init_log at
-the begin of program can print the log in a good style.
-
-Author: yuyao
-Date: 2015-04-28 20:29:00
-"""
-
-import os
 import logging
 import logging.handlers
+import os
+from collections.abc import Callable
+from typing import Any
 
 from keras.callbacks import Callback
 
 
 def init_log(
-    log_path,
-    level=logging.INFO,
-    when='D',
-    backup=3,
-    format='%(levelname)s: %(asctime)s: %(filename)s:%(lineno)d * %(thread)d %(message)s',
-    datefmt='%m-%d %H:%M:%S',
-):
+    log_path: str,
+    level: int = logging.INFO,
+    when: str = 'D',
+    backup: int = 3,
+    format: str = '%(levelname)s: %(asctime)s: %(filename)s:%(lineno)d * %(thread)d %(message)s',  # noqa: E501
+    datefmt: str = '%m-%d %H:%M:%S',
+) -> None:
     """
-    init_log - initialize log module
+    Initialize the log module.
 
     Args:
-      log_path      - Log file path prefix.
-                      Log data will go to two files: log_path.log and log_path.log.wf
-                      Any non-exist parent directories will be created automatically
-      level         - msg above the level will be displayed
-                      DEBUG < INFO < WARNING < ERROR < CRITICAL
-                      the default value is logging.INFO
-      when          - how to split the log file by time interval
-                      'S' : Seconds
-                      'M' : Minutes
-                      'H' : Hours
-                      'D' : Days
-                      'W' : Week day
-                      default value: 'D'
-      format        - format of the log
-                      default format:
-                      %(levelname)s: %(asctime)s: %(filename)s:%(lineno)d * %(thread)d %(message)s
-                      INFO: 12-09 18:02:42: log.py:40 * 139814749787872 HELLO WORLD
-      backup        - how many backup file to keep
-                      default value: 7
+        log_path: Log file path prefix. Log data will go to two files:
+            log_path.log and log_path.log.wf. Any non-existent parent
+            directories will be created automatically.
+        level: Message level threshold. DEBUG < INFO < WARNING < ERROR < CRITICAL.
+        when: How to split the log file by time interval ('S', 'M', 'H', 'D', 'W').
+        backup: How many backup files to keep.
+        format: Format string for the log messages.
+        datefmt: Format string for the date/time portion of the log.
 
     Raises:
-        OSError: fail to create log directories
-        IOError: fail to open log file
+        OSError: If creating log directories fails.
+        IOError: If opening the log file fails.
     """
     formatter = logging.Formatter(format, datefmt)
     logger = logging.getLogger()
@@ -83,13 +63,15 @@ def init_log(
 class LoggingCallback(Callback):
     """Callback that logs message at end of epoch."""
 
-    def __init__(self, print_fcn=print):
-        Callback.__init__(self)
+    def __init__(self, print_fcn: Callable[[str], None] = print) -> None:
+        super().__init__()
         self.print_fcn = print_fcn
 
-    def on_epoch_end(self, epoch, logs={}):
-        msg = 'Epoch: %i, %s' % (
-            epoch,
-            ', '.join('%s: %f' % (k, v) for k, v in logs.items()),
-        )
+    def on_epoch_end(self, epoch: int, logs: dict[str, Any] | None = None) -> None:
+        if logs is None:
+            logs = {}
+
+        metrics = ', '.join(f'{k}: {v:f}' for k, v in logs.items())
+        msg = f'Epoch: {epoch}, {metrics}'
+
         self.print_fcn(msg)

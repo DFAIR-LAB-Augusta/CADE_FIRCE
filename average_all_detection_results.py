@@ -1,18 +1,17 @@
 import os
-import sys
 import re
-import numpy as np
-
+import sys
 from collections import Counter
+
+import numpy as np
 
 import cade.data as data
 
 
-def main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda):
-    if use_pure_ae == 0:
-        REPORT_FOLDER = 'reports'
-    else:
-        REPORT_FOLDER = 'pure_ae_reports'
+def main(
+    dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
+) -> None:
+    REPORT_FOLDER = 'reports' if use_pure_ae == 0 else 'pure_ae_reports'
 
     if dataset == 'drebin':
         families = range(families_cnt)
@@ -20,10 +19,10 @@ def main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
         families = range(1, families_cnt)
         name_dict = {1: 'SSH', 2: 'Hulk', 3: 'Infilteration'}
 
-    p1 = re.compile('precision: \d+\.\d+')
-    p2 = re.compile('recall: \d+\.\d+')
-    p3 = re.compile('f1: \d+\.\d+')
-    p4 = re.compile('best inspection count: \d+')
+    p1 = re.compile(r'precision: \d+\.\d+')
+    p2 = re.compile(r'recall: \d+\.\d+')
+    p3 = re.compile(r'f1: \d+\.\d+')
+    p4 = re.compile(r'best inspection count: \d+')
 
     precision_list, recall_list, f1_list, inspect_cnt_list = [], [], [], []
     involved_families_list = []
@@ -38,7 +37,7 @@ def main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
             single_dataset = f'IDS_new_{name_dict[i]}'
             name = name_dict[i]
 
-        X_train, y_train, X_test, y_test = data.load_features(single_dataset, i)
+        _X_train, _y_train, _X_test, y_test = data.load_features(single_dataset, i)
 
         total_new_family = len(np.where(y_test == last_label)[0])
 
@@ -48,7 +47,7 @@ def main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
             single_dataset,
             f'dist_mlp_one_by_one_check_pr_value_m{margin}_mad{mad}_lambda{cae_lambda}.csv',
         )
-        with open(result_path, 'r') as f:
+        with open(result_path) as f:
             content = f.read()
         precision = float(re.findall(p1, content)[0].replace('precision: ', '')) / 100
         recall = float(re.findall(p2, content)[0].replace('recall: ', '')) / 100
@@ -67,7 +66,7 @@ def main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
 
         # check the involved families in the drifting samples when we get the best results
         involved_families = []
-        with open(result_path, 'r') as f:
+        with open(result_path) as f:
             next(f)
             for idx, line in enumerate(f):
                 if idx < inspect_cnt:
@@ -89,7 +88,7 @@ def main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
     )
     print(
         f'normalized inspect_cnt: {np.average(normalized_inspect_cnt_list):.2f} '
-        + f'+/- {np.std(normalized_inspect_cnt_list):.2f}'
+        f'+/- {np.std(normalized_inspect_cnt_list):.2f}'
     )
     print('============================================')
 
@@ -101,13 +100,10 @@ def main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
     ) as f:
         f.write('family_idx,precision,recall,f1,insepct_cnt,normalized_inspect_cnt\n')
         for i in range(len(precision_list)):
-            if dataset == 'drebin':
-                name = i
-            else:
-                name = name_dict[i + 1]
+            name = i if dataset == 'drebin' else name_dict[i + 1]
             f.write(
                 f'{name},{precision_list[i]:.4f},{recall_list[i]:.4f},{f1_list[i]:.4f},'
-                + f'{inspect_cnt_list[i]:.2f},{normalized_inspect_cnt_list[i]:.2f}\n'
+                f'{inspect_cnt_list[i]:.2f},{normalized_inspect_cnt_list[i]:.2f}\n'
             )
 
         f.write('============================================\n')
@@ -124,15 +120,12 @@ def main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
         )
         f.write(
             f'normalized inspect_cnt: {np.average(normalized_inspect_cnt_list):.2f} '
-            + f'+/- {np.std(normalized_inspect_cnt_list):.2f}\n'
+            f'+/- {np.std(normalized_inspect_cnt_list):.2f}\n'
         )
 
         f.write('============================================\n')
         for i in range(len(involved_families_list)):
-            if dataset == 'drebin':
-                name = i
-            else:
-                name = name_dict[i + 1]
+            name = i if dataset == 'drebin' else name_dict[i + 1]
             f.write(
                 f'family {name}:\t families detected as drifting: {Counter(involved_families_list[i])}\n'
             )
@@ -141,8 +134,8 @@ def main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
 if __name__ == '__main__':
     if len(sys.argv) != 3:
         print(
-            f'usage: "python -u average_all_detection_results.py drebin 0", '
-            + 'where 0 for CADE, 1 for vanilla autoencoder. You may also specify to use drebin or IDS.'
+            'usage: "python -u average_all_detection_results.py drebin 0", '
+            'where 0 for CADE, 1 for vanilla autoencoder. You may also specify to use drebin or IDS.'
         )
         sys.exit(-1)
 
@@ -159,10 +152,7 @@ if __name__ == '__main__':
         print('dataset could only be "drebin" or "IDS"')
         sys.exit(-1)
 
-    if use_pure_ae:
-        mad = 0.0
-    else:
-        mad = 3.5
+    mad = 0.0 if use_pure_ae else 3.5
 
     margin = 10.0
     cae_lambda = 0.1
