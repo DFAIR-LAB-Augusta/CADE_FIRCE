@@ -16,9 +16,14 @@ import logging.handlers
 from keras.callbacks import Callback
 
 
-def init_log(log_path, level=logging.INFO, when="D", backup=3,
-             format="%(levelname)s: %(asctime)s: %(filename)s:%(lineno)d * %(thread)d %(message)s",
-             datefmt="%m-%d %H:%M:%S"):
+def init_log(
+    log_path,
+    level=logging.INFO,
+    when='D',
+    backup=3,
+    format='%(levelname)s: %(asctime)s: %(filename)s:%(lineno)d * %(thread)d %(message)s',
+    datefmt='%m-%d %H:%M:%S',
+):
     """
     init_log - initialize log module
 
@@ -55,9 +60,9 @@ def init_log(log_path, level=logging.INFO, when="D", backup=3,
     if not os.path.isdir(dir):
         os.makedirs(dir)
 
-    handler = logging.handlers.TimedRotatingFileHandler(log_path + ".log",
-                                                        when=when,
-                                                        backupCount=backup)
+    handler = logging.handlers.TimedRotatingFileHandler(
+        log_path + '.log', when=when, backupCount=backup
+    )
     handler.setLevel(level)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
@@ -67,22 +72,24 @@ def init_log(log_path, level=logging.INFO, when="D", backup=3,
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
-    handler = logging.handlers.TimedRotatingFileHandler(log_path + ".log.wf",
-                                                        when=when,
-                                                        backupCount=backup)
+    handler = logging.handlers.TimedRotatingFileHandler(
+        log_path + '.log.wf', when=when, backupCount=backup
+    )
     handler.setLevel(logging.WARNING)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
 
 class LoggingCallback(Callback):
-    """Callback that logs message at end of epoch.
-    """
+    """Callback that logs message at end of epoch."""
 
     def __init__(self, print_fcn=print):
         Callback.__init__(self)
         self.print_fcn = print_fcn
 
     def on_epoch_end(self, epoch, logs={}):
-        msg = "Epoch: %i, %s" % (epoch, ", ".join("%s: %f" % (k, v) for k, v in logs.items()))
+        msg = 'Epoch: %i, %s' % (
+            epoch,
+            ', '.join('%s: %f' % (k, v) for k, v in logs.items()),
+        )
         self.print_fcn(msg)

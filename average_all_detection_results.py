@@ -30,7 +30,7 @@ def main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
     normalized_inspect_cnt_list = []
 
     for i in families:
-        '''calc how many new family samples in the testing set'''
+        """calc how many new family samples in the testing set"""
         if dataset == 'drebin':
             single_dataset = f'drebin_new_{i}'
             name = i
@@ -42,15 +42,23 @@ def main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
 
         total_new_family = len(np.where(y_test == last_label)[0])
 
-        '''record results for each family'''
-        result_path = os.path.join(f'{REPORT_FOLDER}', single_dataset, f'dist_mlp_one_by_one_check_pr_value_m{margin}_mad{mad}_lambda{cae_lambda}.csv')
+        """record results for each family"""
+        result_path = os.path.join(
+            f'{REPORT_FOLDER}',
+            single_dataset,
+            f'dist_mlp_one_by_one_check_pr_value_m{margin}_mad{mad}_lambda{cae_lambda}.csv',
+        )
         with open(result_path, 'r') as f:
             content = f.read()
         precision = float(re.findall(p1, content)[0].replace('precision: ', '')) / 100
         recall = float(re.findall(p2, content)[0].replace('recall: ', '')) / 100
         f1 = float(re.findall(p3, content)[0].replace('f1: ', '')) / 100
-        inspect_cnt = int(re.findall(p4, content)[0].replace('best inspection count: ', ''))
-        print(f'family {name}: precision: {precision * 100}%, recall: {recall * 100}%, f1: {f1 * 100}%, inspect: {inspect_cnt}')
+        inspect_cnt = int(
+            re.findall(p4, content)[0].replace('best inspection count: ', '')
+        )
+        print(
+            f'family {name}: precision: {precision * 100}%, recall: {recall * 100}%, f1: {f1 * 100}%, inspect: {inspect_cnt}'
+        )
         precision_list.append(precision)
         recall_list.append(recall)
         f1_list.append(f1)
@@ -71,48 +79,71 @@ def main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
 
     print('============================================')
     print('avg +/- std (final result in Table 3): ')
-    print(f'precision: {np.average(precision_list) * 100:.2f}% +/- {np.std(precision_list):.2f}')
+    print(
+        f'precision: {np.average(precision_list) * 100:.2f}% +/- {np.std(precision_list):.2f}'
+    )
     print(f'recall: {np.average(recall_list) * 100:.2f}% +/- {np.std(recall_list):.2f}')
     print(f'f1: {np.average(f1_list) * 100:.2f}% +/- {np.std(f1_list):.2f}')
-    print(f'inspect_cnt: {np.average(inspect_cnt_list):.2f} +/- {np.std(inspect_cnt_list):.2f}')
-    print(f'normalized inspect_cnt: {np.average(normalized_inspect_cnt_list):.2f} ' +
-          f'+/- {np.std(normalized_inspect_cnt_list):.2f}')
+    print(
+        f'inspect_cnt: {np.average(inspect_cnt_list):.2f} +/- {np.std(inspect_cnt_list):.2f}'
+    )
+    print(
+        f'normalized inspect_cnt: {np.average(normalized_inspect_cnt_list):.2f} '
+        + f'+/- {np.std(normalized_inspect_cnt_list):.2f}'
+    )
     print('============================================')
 
     saved_report_folder = f'{REPORT_FOLDER}/average_{dataset}'
     os.makedirs(saved_report_folder, exist_ok=True)
-    with open(f'{saved_report_folder}/average_{dataset}_result_margin{margin}_mad{mad}_lambda{cae_lambda}.txt', 'w') as f:
+    with open(
+        f'{saved_report_folder}/average_{dataset}_result_margin{margin}_mad{mad}_lambda{cae_lambda}.txt',
+        'w',
+    ) as f:
         f.write('family_idx,precision,recall,f1,insepct_cnt,normalized_inspect_cnt\n')
         for i in range(len(precision_list)):
             if dataset == 'drebin':
                 name = i
             else:
-                name = name_dict[i+1]
-            f.write(f'{name},{precision_list[i]:.4f},{recall_list[i]:.4f},{f1_list[i]:.4f},' + \
-                    f'{inspect_cnt_list[i]:.2f},{normalized_inspect_cnt_list[i]:.2f}\n')
+                name = name_dict[i + 1]
+            f.write(
+                f'{name},{precision_list[i]:.4f},{recall_list[i]:.4f},{f1_list[i]:.4f},'
+                + f'{inspect_cnt_list[i]:.2f},{normalized_inspect_cnt_list[i]:.2f}\n'
+            )
 
         f.write('============================================\n')
         f.write('avg +/- std (final result in Table 3): \n')
-        f.write(f'precision: {np.average(precision_list) * 100:.2f}% +/- {np.std(precision_list):.2f}\n')
-        f.write(f'recall: {np.average(recall_list) * 100:.2f}% +/- {np.std(recall_list):.2f}\n')
+        f.write(
+            f'precision: {np.average(precision_list) * 100:.2f}% +/- {np.std(precision_list):.2f}\n'
+        )
+        f.write(
+            f'recall: {np.average(recall_list) * 100:.2f}% +/- {np.std(recall_list):.2f}\n'
+        )
         f.write(f'f1: {np.average(f1_list) * 100:.2f}% +/- {np.std(f1_list):.2f} \n')
-        f.write(f'inspect_cnt: {np.average(inspect_cnt_list):.2f} +/- {np.std(inspect_cnt_list):.2f}\n')
-        f.write(f'normalized inspect_cnt: {np.average(normalized_inspect_cnt_list):.2f} ' +
-                f'+/- {np.std(normalized_inspect_cnt_list):.2f}\n')
+        f.write(
+            f'inspect_cnt: {np.average(inspect_cnt_list):.2f} +/- {np.std(inspect_cnt_list):.2f}\n'
+        )
+        f.write(
+            f'normalized inspect_cnt: {np.average(normalized_inspect_cnt_list):.2f} '
+            + f'+/- {np.std(normalized_inspect_cnt_list):.2f}\n'
+        )
 
         f.write('============================================\n')
         for i in range(len(involved_families_list)):
             if dataset == 'drebin':
                 name = i
             else:
-                name = name_dict[i+1]
-            f.write(f'family {name}:\t families detected as drifting: {Counter(involved_families_list[i])}\n')
+                name = name_dict[i + 1]
+            f.write(
+                f'family {name}:\t families detected as drifting: {Counter(involved_families_list[i])}\n'
+            )
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     if len(sys.argv) != 3:
-        print(f'usage: "python -u average_all_detection_results.py drebin 0", ' +
-               'where 0 for CADE, 1 for vanilla autoencoder. You may also specify to use drebin or IDS.')
+        print(
+            f'usage: "python -u average_all_detection_results.py drebin 0", '
+            + 'where 0 for CADE, 1 for vanilla autoencoder. You may also specify to use drebin or IDS.'
+        )
         sys.exit(-1)
 
     dataset = sys.argv[1]

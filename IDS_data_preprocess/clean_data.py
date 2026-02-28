@@ -1,4 +1,4 @@
-'''
+"""
 clean and save compressed data. Also sort by timestamps, ascending order.
 
 nohup python -u clean_data.py > logs/clean_data.log &
@@ -10,7 +10,7 @@ Duplicate traffic was removed (duplicate means exactly same traffic).
 For "02_20_2018.csv" file, it has 4 extra features in the beninning (Flow ID, Src IP, Src Port, Dst IP,)
 -> extra features were removed.
 
-'''
+"""
 
 import os, sys
 import traceback
@@ -28,35 +28,53 @@ from cade.config import config
 RAW_DATA_PATH = config['IDS2018']
 SAVE_PATH = config['IDS2018_clean']
 
-NORMAL_FILES = ['02_14_2018', '02_15_2018', '02_16_2018', '02_21_2018',
-                '02_22_2018', '02_23_2018', '02_28_2018', '03_01_2018', '03_02_2018']
+NORMAL_FILES = [
+    '02_14_2018',
+    '02_15_2018',
+    '02_16_2018',
+    '02_21_2018',
+    '02_22_2018',
+    '02_23_2018',
+    '02_28_2018',
+    '03_01_2018',
+    '03_02_2018',
+]
 
 SPECIFIC_FILES = ['02_20_2018']
 
-TRAFFIC_LABEL = {'Benign': 0,
-                 'FTP-BruteForce': 1, 'SSH-Bruteforce': 1,
-                 'DoS attacks-GoldenEye': 2, 'DoS attacks-Slowloris': 2,
-                 'DoS attacks-SlowHTTPTest': 2, 'DoS attacks-Hulk': 2,
-                 'Infilteration': 3,
-                 'DDoS attacks-LOIC-HTTP': 4, 'DDOS attack-LOIC-UDP': 4, 'DDOS attack-HOIC': 4,
-                 'Brute Force -Web': 5,
-                 'Brute Force -XSS': 5,
-                 'Bot': 6,
-                 'SQL Injection': 7
-                 }
+TRAFFIC_LABEL = {
+    'Benign': 0,
+    'FTP-BruteForce': 1,
+    'SSH-Bruteforce': 1,
+    'DoS attacks-GoldenEye': 2,
+    'DoS attacks-Slowloris': 2,
+    'DoS attacks-SlowHTTPTest': 2,
+    'DoS attacks-Hulk': 2,
+    'Infilteration': 3,
+    'DDoS attacks-LOIC-HTTP': 4,
+    'DDOS attack-LOIC-UDP': 4,
+    'DDOS attack-HOIC': 4,
+    'Brute Force -Web': 5,
+    'Brute Force -XSS': 5,
+    'Bot': 6,
+    'SQL Injection': 7,
+}
+
 
 def clean_single_file(filename, is_specific=False):
     traffic_contain_null_count = 0
     traffic_contain_infinity_count = 0
     traffic_invalid_timestamp_count = 0
 
-    traffics = [] # a list of traffics, including feature vector and label names.
+    traffics = []  # a list of traffics, including feature vector and label names.
 
     print(f'cleaning file {filename}...')
 
-    '''remove traffic with NaN and Infinity values, read the file content into a numpy array.'''
+    """remove traffic with NaN and Infinity values, read the file content into a numpy array."""
     with open(filename, 'r') as f:
-        date_str = filename.replace('.csv', '').replace('_', '/').replace(RAW_DATA_PATH, '')
+        date_str = (
+            filename.replace('.csv', '').replace('_', '/').replace(RAW_DATA_PATH, '')
+        )
         date_str = date_str[3:5] + '/' + date_str[0:2] + date_str[5:]
         print(f'date_str: {date_str}')
         next(f)
@@ -68,7 +86,9 @@ def clean_single_file(filename, is_specific=False):
                 if is_specific:
                     # the 02_20_2018 file has 4 extra features in the beginning
                     line = line[4:]
-                if not line[0].isdigit():  # useless traffic, which is not a feature vector of traffic
+                if (
+                    not line[0].isdigit()
+                ):  # useless traffic, which is not a feature vector of traffic
                     continue
                 if 'NaN' in line:
                     traffic_contain_null_count += 1
@@ -80,7 +100,9 @@ def clean_single_file(filename, is_specific=False):
                     traffic_invalid_timestamp_count += 1
                     continue
                 # convert datetime to UNIX timestamp
-                line[2] = str(datetime.strptime(line[2], '%d/%m/%Y %H:%M:%S').timestamp())
+                line[2] = str(
+                    datetime.strptime(line[2], '%d/%m/%Y %H:%M:%S').timestamp()
+                )
                 traffics.append(line)
             except:
                 print(f'{filename} line {idx} error')
@@ -94,17 +116,19 @@ def clean_single_file(filename, is_specific=False):
     traffics = np.array(traffics)
     print(f'after removing NaN, Infinity, and invalid, traffic shape: {traffics.shape}')
 
-    '''remove duplicate traffics and save feature vectors, assigned labels, semantic labels to a compressed file.'''
+    """remove duplicate traffics and save feature vectors, assigned labels, semantic labels to a compressed file."""
     # np.unique will sort instead of keeping the original order.
     unique_traffics = np.unique(traffics, axis=0)
-    sorted_traffics = unique_traffics[np.argsort(unique_traffics[:, 2])]  # sort by the timestamp of the traffic
+    sorted_traffics = unique_traffics[
+        np.argsort(unique_traffics[:, 2])
+    ]  # sort by the timestamp of the traffic
 
     X = sorted_traffics[:, 0:-1].astype(np.float)  # feature vectors
-    y_name = sorted_traffics[:, -1] # full name indicating the meaning of the label.
+    y_name = sorted_traffics[:, -1]  # full name indicating the meaning of the label.
 
-    y = [] # assigned labels
+    y = []  # assigned labels
     for name in y_name:
-        y.append(TRAFFIC_LABEL[name]) # convert label name to number
+        y.append(TRAFFIC_LABEL[name])  # convert label name to number
     y = np.array(y)
 
     base_filename = os.path.basename(filename)
@@ -114,7 +138,9 @@ def clean_single_file(filename, is_specific=False):
     print(f'sorted traffics shape: {X.shape}')
     print(f'labels shape: {y.shape}')
     print(f'label names shape: {y_name.shape}')
-    print(f'percentage of kept traffic (removing NaN, Infinity, duplicates): {X.shape[0] / len(contents)}')
+    print(
+        f'percentage of kept traffic (removing NaN, Infinity, duplicates): {X.shape[0] / len(contents)}'
+    )
     print('===================\n')
 
 
@@ -146,7 +172,7 @@ def main():
     end = timer()
     print(f'time elapsed: {end - start}')
 
-    '''calc the # of each label in each file'''
+    """calc the # of each label in each file"""
     stats()
 
 

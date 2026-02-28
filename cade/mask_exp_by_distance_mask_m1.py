@@ -6,16 +6,19 @@ Loss function:  \min E_{m \sim Bern(p)} ||f(x * (1 - m * m1) + (1-x)*(m * m1)), 
 """
 
 import os, sys
+
 os.environ['PYTHONHASHSEED'] = '0'
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # so the IDs match nvidia-smi
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'  # so the IDs match nvidia-smi
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 from numpy.random import seed
 import random
+
 random.seed(1)
 seed(1)
 
 from tensorflow import set_random_seed
+
 set_random_seed(2)
 
 from keras import backend as K
@@ -37,13 +40,27 @@ import logging
 import numpy as np
 
 import warnings
+
 warnings.filterwarnings('ignore')
 
 
 class OptimizeExp(object):
-    def __init__(self, batch_size, mask_shape, latent_dim, model, optimizer, initializer, lr,
-                 regularizer, temp, normalize_choice, use_concrete, model_file):
-        """ Explaining drift: minimize the difference between a drift $x$ and an in distribution centroid $c$ by swapping a
+    def __init__(
+        self,
+        batch_size,
+        mask_shape,
+        latent_dim,
+        model,
+        optimizer,
+        initializer,
+        lr,
+        regularizer,
+        temp,
+        normalize_choice,
+        use_concrete,
+        model_file,
+    ):
+        """Explaining drift: minimize the difference between a drift $x$ and an in distribution centroid $c$ by swapping a
                             small proportion of features.
         :param batch_size: training batch size.
         :param mask_shape: shape of the mask.
@@ -59,7 +76,9 @@ class OptimizeExp(object):
         """
 
         self.model = model
-        self.lambda_1 = tf.placeholder(tf.float32) # placeholder is similar to cin of C++
+        self.lambda_1 = tf.placeholder(
+            tf.float32
+        )  # placeholder is similar to cin of C++
         self.optimizer = optimizer(lr)
         self.initializer = initializer
         self.regularizer = regularizer
@@ -72,7 +91,7 @@ class OptimizeExp(object):
 
     @staticmethod
     def concrete_transformation(p, mask_shape, batch_size, temp=1.0 / 10.0):
-        """ Use concrete distribution to approximate binary output.
+        """Use concrete distribution to approximate binary output.
         :param p: Bernoulli distribution parameters.
         :param temp: temperature.
         :param batch_size: size of samples.
@@ -80,13 +99,18 @@ class OptimizeExp(object):
         """
         epsilon = np.finfo(float).eps  # 1e-16
 
-        unif_noise = tf.random_uniform(shape=(batch_size, mask_shape[0]),
-                                       minval=0, maxval=1)
+        unif_noise = tf.random_uniform(
+            shape=(batch_size, mask_shape[0]), minval=0, maxval=1
+        )
         reverse_theta = tf.ones_like(p) - p
         reverse_unif_noise = tf.ones_like(unif_noise) - unif_noise
 
-        appro = tf.log(p + epsilon) - tf.log(reverse_theta + epsilon) + \
-                tf.log(unif_noise) - tf.log(reverse_unif_noise)
+        appro = (
+            tf.log(p + epsilon)
+            - tf.log(reverse_theta + epsilon)
+            + tf.log(unif_noise)
+            - tf.log(reverse_unif_noise)
+        )
         logit = appro / temp
 
         return tf.sigmoid(logit)
@@ -101,7 +125,9 @@ class OptimizeExp(object):
 
         # define and prepare variables.
         with tf.variable_scope('p', reuse=tf.AUTO_REUSE):
-            self.p = tf.get_variable('p', shape=mask_shape, initializer=self.initializer)
+            self.p = tf.get_variable(
+                'p', shape=mask_shape, initializer=self.initializer
+            )
 
         ## normalize variables
         if self.normalize_choice == 'sigmoid':
@@ -116,7 +142,9 @@ class OptimizeExp(object):
 
         ## discrete variables to continuous variables.
         if self.use_concrete:
-            self.mask = self.concrete_transformation(self.p_normalized, mask_shape, self.batch_size, self.temp)
+            self.mask = self.concrete_transformation(
+                self.p_normalized, mask_shape, self.batch_size, self.temp
+            )
         else:
             self.mask = self.p_normalized
         self.reverse_p = tf.ones_like(self.p_normalized) - self.p_normalized
@@ -128,19 +156,27 @@ class OptimizeExp(object):
         self.m1 = tf.placeholder(tf.float32, shape=mask_shape)
         self.reverse_mask = tf.ones_like(self.mask) - self.mask * self.m1
         # if flip their feature value, it would be closer to the centroid
-        self.x_exp = self.input * self.reverse_mask + self.reverse_x * self.mask * self.m1
+        self.x_exp = (
+            self.input * self.reverse_mask + self.reverse_x * self.mask * self.m1
+        )
         self.centroid = tf.placeholder(tf.float32, shape=(None, latent_dim))
         self.output_exp = self.model(self.x_exp)
 
         # l2 norm distance.
-        self.loss_exp = tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.square(self.output_exp - self.centroid), axis=1)))
+        self.loss_exp = tf.reduce_mean(
+            tf.sqrt(tf.reduce_sum(tf.square(self.output_exp - self.centroid), axis=1))
+        )
 
         if self.regularizer == 'l1':
             self.loss_reg_mask = tf.reduce_sum(tf.abs(self.p_normalized * self.m1))
         elif self.regularizer == 'elasticnet':
-            self.loss_reg_mask = self.elasticnet_loss(self.p_normalized * self.m1)  # minimize mask
+            self.loss_reg_mask = self.elasticnet_loss(
+                self.p_normalized * self.m1
+            )  # minimize mask
         elif self.regularizer == 'l2':
-            self.loss_reg_mask = tf.sqrt(tf.reduce_sum(tf.square(self.p_normalized * self.m1)))
+            self.loss_reg_mask = tf.sqrt(
+                tf.reduce_sum(tf.square(self.p_normalized * self.m1))
+            )
         else:
             self.loss_reg_mask = tf.constant(0)
 
@@ -153,11 +189,24 @@ class OptimizeExp(object):
         with tf.variable_scope('opt', reuse=tf.AUTO_REUSE):
             self.train_op = self.optimizer.minimize(self.loss, var_list=self.var_train)
 
-    def fit_local(self, X, m1, centroid, closest_to_centroid_sample, num_sync, num_changed_fea, epochs, lambda_1,
-                  display_interval=10, exp_loss_lowerbound=0.17, iteration_threshold=1e-4, lambda_patience=100,
-                  lambda_multiplier=1.5, early_stop_patience=10):
-
-        """ fit explanation.
+    def fit_local(
+        self,
+        X,
+        m1,
+        centroid,
+        closest_to_centroid_sample,
+        num_sync,
+        num_changed_fea,
+        epochs,
+        lambda_1,
+        display_interval=10,
+        exp_loss_lowerbound=0.17,
+        iteration_threshold=1e-4,
+        lambda_patience=100,
+        lambda_multiplier=1.5,
+        early_stop_patience=10,
+    ):
+        """fit explanation.
         :param X: input sample
         :param centroid: low dimsion centroid.
         :param num_sync: num of sync sample.
@@ -187,12 +236,14 @@ class OptimizeExp(object):
         sync_lowd = self.model.predict(input_)
         dis = np.square((sync_lowd - centroid))
         dis = np.mean(np.sqrt(np.sum(dis, axis=1)))
-        logging.debug(f'x_target + synthesized sample average distance to centroid: {dis}')
+        logging.debug(
+            f'x_target + synthesized sample average distance to centroid: {dis}'
+        )
 
         if input_.shape[0] % self.batch_size != 0:
             num_batch = (input_.shape[0] // self.batch_size) + 1
         else:
-            num_batch = (input_.shape[0] // self.batch_size)
+            num_batch = input_.shape[0] // self.batch_size
         idx = np.arange(input_.shape[0])
 
         loss_best = float('inf')
@@ -207,7 +258,9 @@ class OptimizeExp(object):
 
         # start training...
         with tf.Session() as sess:
-            sess.run(tf.initializers.global_variables())  # same as tf.global_variables_initializer()
+            sess.run(
+                tf.initializers.global_variables()
+            )  # same as tf.global_variables_initializer()
             self.model.load_weights(self.model_file, by_name=True)
 
             for step in range(epochs):
@@ -215,15 +268,25 @@ class OptimizeExp(object):
                 loss_exp_tmp = []
                 loss_sparse_mask_tmp = []
                 for i in range(num_batch):
-                    feed_dict = {self.input: input_[idx[i * self.batch_size:min((i + 1) * self.batch_size, input_.shape[0])],],
-                                 self.lambda_1: lambda_1, self.centroid: centroid[None, ],
-                                 self.reverse_x: closest_to_centroid_sample[None, ],
-                                 self.m1: m1}
+                    feed_dict = {
+                        self.input: input_[
+                            idx[
+                                i * self.batch_size : min(
+                                    (i + 1) * self.batch_size, input_.shape[0]
+                                )
+                            ],
+                        ],
+                        self.lambda_1: lambda_1,
+                        self.centroid: centroid[None,],
+                        self.reverse_x: closest_to_centroid_sample[None,],
+                        self.m1: m1,
+                    }
                     sess.run(self.train_op, feed_dict)
                     # NOTE: we don't need to load weights every batch. this is really time consuming. 5x time
                     # self.model.load_weights(self.model_file, by_name=True)
-                    [loss, loss_sparse_mask, loss_exp] = sess.run([self.loss, self.loss_reg_mask,
-                                                                        self.loss_exp], feed_dict)
+                    [loss, loss_sparse_mask, loss_exp] = sess.run(
+                        [self.loss, self.loss_reg_mask, self.loss_exp], feed_dict
+                    )
                     loss_tmp.append(loss)
                     loss_exp_tmp.append(loss_exp)
                     loss_sparse_mask_tmp.append(loss_sparse_mask)
@@ -233,26 +296,33 @@ class OptimizeExp(object):
                 loss_sparse_mask = sum(loss_sparse_mask_tmp) / len(loss_sparse_mask_tmp)
 
                 if loss_exp <= exp_loss_lowerbound:
-                        lambda_up_counter += 1
-                        if lambda_up_counter >= lambda_patience:
-                            lambda_1 = lambda_1 * lambda_multiplier
-                            lambda_up_counter = 0
+                    lambda_up_counter += 1
+                    if lambda_up_counter >= lambda_patience:
+                        lambda_1 = lambda_1 * lambda_multiplier
+                        lambda_up_counter = 0
                 else:
                     lambda_down_counter += 1
                     if lambda_down_counter >= lambda_patience:
                         lambda_1 = lambda_1 / lambda_multiplier
                         lambda_down_counter = 0
 
-                if (np.abs(loss - loss_last) < iteration_threshold) or \
-                        (np.abs(loss_sparse_mask - loss_sparse_mask_last) < iteration_threshold):
+                if (np.abs(loss - loss_last) < iteration_threshold) or (
+                    np.abs(loss_sparse_mask - loss_sparse_mask_last)
+                    < iteration_threshold
+                ):
                     early_stop_counter += 1
 
-                if (loss_exp <= exp_loss_lowerbound) and (early_stop_counter >= early_stop_patience):
-                    logging.info('Reach the threshold and stop training at iteration %d/%d.' % (step + 1, epochs))
+                if (loss_exp <= exp_loss_lowerbound) and (
+                    early_stop_counter >= early_stop_patience
+                ):
+                    logging.info(
+                        'Reach the threshold and stop training at iteration %d/%d.'
+                        % (step + 1, epochs)
+                    )
                     mask_best = sess.run([self.p_normalized])[0]
                     break
 
-                if (step+1) % display_interval == 0:
+                if (step + 1) % display_interval == 0:
                     mask = sess.run(self.p)
                     if np.isnan(mask).any():
                         mask[np.isnan(mask)] = 1e-16
@@ -260,10 +330,14 @@ class OptimizeExp(object):
 
                     if loss_best > loss or loss_sparse_mask_best > loss_sparse_mask:
                         logging.debug(f'updating best loss from {loss_best} to {loss}')
-                        logging.debug(f'updating best sparse mask loss from {loss_sparse_mask_best} to {loss_sparse_mask}')
-                        logging.debug("Epoch %d/%d: loss = %.5f explanation_loss = %.5f "
-                                        "mask_sparse_loss = %.5f "
-                                        % (step+1, epochs, loss, loss_exp, loss_sparse_mask))
+                        logging.debug(
+                            f'updating best sparse mask loss from {loss_sparse_mask_best} to {loss_sparse_mask}'
+                        )
+                        logging.debug(
+                            'Epoch %d/%d: loss = %.5f explanation_loss = %.5f '
+                            'mask_sparse_loss = %.5f '
+                            % (step + 1, epochs, loss, loss_exp, loss_sparse_mask)
+                        )
                         loss_best = loss
                         loss_sparse_mask_best = loss_sparse_mask
                         mask_best = sess.run([self.p_normalized])[0]

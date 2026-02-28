@@ -9,7 +9,7 @@ _dependencies = [
     'Keras==2.2.5',
     'seaborn<=0.11.0,>=0.9.0',
     'tqdm<=4.49.0,>=4.35.0',
-    'pyparsing<=2.4.7,>=2.4.2'
+    'pyparsing<=2.4.7,>=2.4.2',
 ]
 
 setup(
@@ -23,7 +23,7 @@ setup(
     setup_requires=_dependencies,
     install_requires=_dependencies,
     extras_require={
-        "tf": ["tensorflow==1.10.0"],
-        "tf_gpu": ["tensorflow-gpu==1.12.0"],
-    }
+        'tf': ['tensorflow==1.10.0'],
+        'tf_gpu': ['tensorflow-gpu==1.12.0'],
+    },
 )
