@@ -70,12 +70,14 @@ class MLPClassifier:
         x = input_tensor
 
         for i in range(n_stacks - 1):
-            x = Dense(self.dims[i + 1], activation=self.act, name=f'clf_{i}')(x)
+            x = Dense(self.dims[i + 1],
+                      activation=self.act, name=f'clf_{i}')(x)
 
             if self.dropout > 0:
                 x = Dropout(self.dropout, seed=42)(x)
 
-        x = Dense(self.dims[-1], activation='softmax', name=f'clf_{n_stacks - 1}')(x)
+        x = Dense(self.dims[-1], activation='softmax',
+                  name=f'clf_{n_stacks - 1}')(x)
 
         output_tensor = x
         model = Model(inputs=input_tensor, outputs=output_tensor, name='MLP')
@@ -174,7 +176,8 @@ class MLPClassifier:
                 plt.figure()
                 plt.plot(history.history['loss'], '-b', label='Training')
                 if 'val_loss' in history.history:
-                    plt.plot(history.history['val_loss'], '--r', label='Testing')
+                    plt.plot(history.history['val_loss'],
+                             '--r', label='Testing')
                 plt.legend()
                 plt.ylabel('loss')
                 plt.xlabel('epoch')
@@ -191,7 +194,8 @@ class MLPClassifier:
                 val_acc = val_score[1]
 
                 metric_name = clf.metrics_names[1]
-                logging.info(f'MLP validation {metric_name}: {val_acc * 100:.2f}%')
+                logging.info(
+                    f'MLP validation {metric_name}: {val_acc * 100:.2f}%')
             else:
                 raise AttributeError(
                     f'Expected a Keras Model, but loaded {type(clf)}. '
@@ -213,7 +217,8 @@ class MLPClassifier:
                     epochs=epochs,
                     batch_size=batch_size,
                     verbose=str(self.verbose),
-                    callbacks=[LoggingCallback(logging.debug)] if self.verbose else [],
+                    callbacks=[LoggingCallback(
+                        logging.debug)] if self.verbose else [],
                 )
 
             k.clear_session()
@@ -264,7 +269,8 @@ class MLPClassifier:
         new_acc = float(accuracy_score(y_new, y_pred))
         cm = confusion_matrix(y_new, y_pred)
 
-        logging.info(f'MLP testing set {clf.metrics_names[1]}: {new_acc * 100:.2f}%')
+        logging.info(
+            f'MLP testing set {clf.metrics_names[1]}: {new_acc * 100:.2f}%')
         logging.info(f'MLP confusion matrix: \n {cm}')
 
         utils.plot_confusion_matrix(
@@ -279,42 +285,66 @@ class RFClassifier:
     It internally supports multi-class classification. So don't need to one-hot encode the labels.
     """  # noqa: E501
 
-    def __init__(self, rf_save_path, tree=100) -> None:
+    def __init__(self, rf_save_path: str, tree: int = 100) -> None:
         self.rf_save_path = rf_save_path
         self.tree = tree
 
     def fit_and_predict(
         self,
-        x_old,
-        y_old,
-        x_new,
-        y_new,
-        dataset_name,
-        newfamily,
-        saved_cm_fig_path,
-        retrain,
-        test_size=0.2,
-    ):
+        x_old: np.ndarray,
+        y_old: np.ndarray,
+        x_new: np.ndarray,
+        y_new: np.ndarray,
+        dataset_name: str,
+        newfamily: int,
+        saved_cm_fig_path: str,
+        *,
+        retrain: bool,
+        test_size: float = 0.2,
+    ) -> tuple[np.ndarray, float, float]:
+        """
+        Train a Random Forest on old data and evaluate on both old and new data.
+
+        Args:
+            x_old: Feature vectors for the historical samples.
+            y_old: Groundtruth labels for the historical samples.
+            x_new: Feature vectors for the new/unseen samples.
+            y_new: Groundtruth labels for the new/unseen samples.
+            dataset_name: Name of the dataset for plotting logic.
+            newfamily: Label index for the 'new family' class.
+            saved_cm_fig_path: Path to save the confusion matrix visualization.
+            retrain: If True, fits a new model; otherwise, loads from disk.
+            test_size: Proportion of old data to use for testing.
+
+        Returns:
+            A tuple containing:
+                - y_new_pred (np.ndarray): Predictions for the new samples.
+                - test_acc (float): Accuracy on the old data test split.
+                - new_acc (float): Accuracy on the new samples.
+        """
         x_train, x_test, y_train, y_test = train_test_split(
             x_old, y_old, test_size=test_size, random_state=42, shuffle=True
         )
 
         if retrain:
-            model = RandomForestClassifier(n_estimators=self.tree, random_state=0)
+            model = RandomForestClassifier(
+                n_estimators=self.tree, random_state=0)
             model.fit(x_train, y_train)
+            utils.create_parent_folder(self.rf_save_path)
             with open(self.rf_save_path, 'wb') as f:
                 pickle.dump(model, f)
 
         with open(self.rf_save_path, 'rb') as f:
             model = pickle.load(f)
+
         y_test_pred = model.predict(x_test)
-        test_acc = accuracy_score(y_test, y_test_pred)
-        logging.info('RF test samples acc: %.2f%%' % (test_acc * 100))
+        test_acc = float(accuracy_score(y_test, y_test_pred))
+        logging.info(f'RF test samples acc: {test_acc * 100:.2f}%')
 
         y_new_pred = model.predict(x_new)
-        logging.debug('y_new_pred: ' + str(y_new_pred))
-        new_acc = accuracy_score(y_new, y_new_pred)
-        logging.info('RF new samples acc: %.2f%%' % (new_acc * 100))
+        logging.debug(f'y_new_pred: {y_new_pred}')
+        new_acc = float(accuracy_score(y_new, y_new_pred))
+        logging.info(f'RF new samples acc: {new_acc * 100:.2f}%')
 
         cm = confusion_matrix(y_new, y_new_pred)
         utils.plot_confusion_matrix(

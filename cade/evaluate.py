@@ -36,10 +36,10 @@ set_random_seed(2)
 
 def report_classification_results(
     model_path: str,
-    X_new,
-    y_new,
-    classify_results_all_path,
-    classify_results_simple_path,
+    X_new: np.ndarray,
+    y_new: np.ndarray,
+    classify_results_all_path: str,
+    classify_results_simple_path: str,
 ) -> None:
     """Report wrongly classified samples and probabilities for classification model.
 
@@ -49,7 +49,7 @@ def report_classification_results(
         y_new {np.ndarray} -- groundtruth label of new data samples.
         classify_results_all_path {str} -- file path for saving the wrongly classified samples and probabilities.
         classify_results_simple_path {str} -- file path for saving all the new samples prediction, real, prob.
-    """
+    """  # noqa: E501
     report_classification_results_helper(
         model_path, X_new, y_new, classify_results_all_path, only_wrongly_samples=False
     )
@@ -77,7 +77,8 @@ def report_classification_results_helper(
         y_new_pred = clf_model.predict(X_new)
         y_new_prob = np.max(clf_model.predict_proba(X_new), axis=1)
     else:
-        logging.error(f'saved model name {model_path} is neither h5 or pkl format')
+        logging.error(
+            f'saved model name {model_path} is neither h5 or pkl format')
         sys.exit(-1)
 
     utils.create_parent_folder(report_file_path)
@@ -86,9 +87,11 @@ def report_classification_results_helper(
         for idx, real_label in tqdm(enumerate(y_new), desc='MLP classified'):
             if only_wrongly_samples:
                 if y_new_pred[idx] != real_label:
-                    f.write(f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
+                    f.write(
+                        f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
             else:
-                f.write(f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
+                f.write(
+                    f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
     if only_wrongly_samples:
         logging.info('Reported wrongly classified samples.')
     else:
@@ -187,8 +190,10 @@ def evaluate_newfamily_as_drift_by_distance(
         acc_classifier, acc_closest, dist_one_by_one_check_result_path
     )
 
-    logging.debug(f'use drift closest family as prediction accuracy:\n {acc_closest}')
-    logging.debug(f'use drift closest family as prediction confusion matrix:\n {cm}')
+    logging.debug(
+        f'use drift closest family as prediction accuracy:\n {acc_closest}')
+    logging.debug(
+        f'use drift closest family as prediction confusion matrix:\n {cm}')
 
 
 def plot_inspection_effort_pr_value_by_dist(
@@ -220,14 +225,14 @@ def plot_inspection_effort_pr_value_by_dist(
         best_inspection_percent = best_inspection_cnt / len(precision_list)
         f.write(f'\n\nTotal: {len(sorted_samples)}\n')
         f.write(
-            f'best inspection count: {best_inspection_cnt}, percent: {best_inspection_percent}\n'
+            f'best inspection count: {best_inspection_cnt}, percent: {best_inspection_percent}\n'  # noqa: E501
         )
         f.write(
             f'best performance -- precision: {best_precision * 100:.2f}%, recall: {best_recall * 100:.2f}%\
-                f1: {best_f1 * 100:.2f}%\n'
+                f1: {best_f1 * 100:.2f}%\n'  # noqa: E501
         )
 
-    annotation_text = f'inspect {best_inspection_cnt} samples\nP:{best_precision * 100:.2f}%, R:{best_recall * 100:.2f}%\nF1:{best_f1 * 100:.2f}%'
+    annotation_text = f'inspect {best_inspection_cnt} samples\nP:{best_precision * 100:.2f}%, R:{best_recall * 100:.2f}%\nF1:{best_f1 * 100:.2f}%'  # noqa: E501
 
     fig, ax = plt.subplots()
     ax.plot(inspection_cnt_list, precision_list, label='precision', color='g')
@@ -238,7 +243,8 @@ def plot_inspection_effort_pr_value_by_dist(
     ax.set_title(
         'Precision Recall value as the change of inspection efforts', fontsize=12
     )
-    ax.set_xticks(np.around(np.linspace(0, len(inspection_cnt_list), 10), decimals=0))
+    ax.set_xticks(np.around(np.linspace(
+        0, len(inspection_cnt_list), 10), decimals=0))
     ax.set_xlabel('Inspection Effort (# of Samples)', fontsize=16)
     ax.set_ylabel('Rate', fontsize=16)
     ax.legend(loc='best')
@@ -253,7 +259,7 @@ def append_accuracy_result_to_final_report(
         f.write('\n====================================\n')
         f.write(f'classifier acc on testing set: {acc_classifier}\n')
         f.write(
-            f'use drift closest family as prediction accuracy on testing set: {acc_closest}\n'
+            f'use drift closest family as prediction accuracy on testing set: {acc_closest}\n'  # noqa: E501
         )
 
 
