@@ -17,7 +17,7 @@ from collections import OrderedDict
 import matplotlib.pyplot as plt
 import numpy as np
 from keras import backend as k
-from keras.models import load_model
+from keras.models import Model, load_model
 from numpy.random import seed
 from sklearn.metrics import accuracy_score, confusion_matrix
 from tensorflow import set_random_seed
@@ -36,26 +36,27 @@ set_random_seed(2)
 
 def report_classification_results(
     model_path: str,
-    X_new: np.ndarray,
+    x_new: np.ndarray,
     y_new: np.ndarray,
     classify_results_all_path: str,
     classify_results_simple_path: str,
 ) -> None:
-    """Report wrongly classified samples and probabilities for classification model.
+    """
+    Report wrongly classified samples and probabilities for classification model.
 
-    Arguments:
-        model_path {str} -- file path for the target MLP model.
-        X_new {np.ndarray} -- feature vectors of new data samples.
-        y_new {np.ndarray} -- groundtruth label of new data samples.
-        classify_results_all_path {str} -- file path for saving the wrongly classified samples and probabilities.
-        classify_results_simple_path {str} -- file path for saving all the new samples prediction, real, prob.
+    Args:
+        model_path: File path for the target MLP model.
+        x_new: Feature vectors of new data samples.
+        y_new: Groundtruth labels of new data samples.
+        classify_results_all_path: File path for saving all new samples (prediction, real, prob).
+        classify_results_simple_path: File path for saving only wrongly classified samples.
     """  # noqa: E501
     report_classification_results_helper(
-        model_path, X_new, y_new, classify_results_all_path, only_wrongly_samples=False
+        model_path, x_new, y_new, classify_results_all_path, only_wrongly_samples=False
     )
     report_classification_results_helper(
         model_path,
-        X_new,
+        x_new,
         y_new,
         classify_results_simple_path,
         only_wrongly_samples=True,
@@ -63,22 +64,40 @@ def report_classification_results(
 
 
 def report_classification_results_helper(
-    model_path, X_new, y_new, report_file_path, only_wrongly_samples
+    model_path: str,
+    x_new: np.ndarray,
+    y_new: np.ndarray,
+    report_file_path: str,
+    *,
+    only_wrongly_samples: bool,
 ) -> None:
+    """
+    Generate a CSV report of classification results, optionally filtering for errors.
+
+    Args:
+        model_path: Path to the saved model (.h5 for Keras, .pkl for Scikit-learn).
+        x_new: Feature vectors of the samples to classify.
+        y_new: Groundtruth labels for the samples.
+        report_file_path: Destination path for the CSV report.
+        only_wrongly_samples: If True, only log samples where prediction != real_label.
+    """
     if 'h5' in model_path:
         k.clear_session()
         clf_model = load_model(model_path)
-        preds = clf_model.predict(X_new)
+        if not isinstance(clf_model, Model):
+            raise TypeError(
+                f'Loaded model is invalid. Expected Keras Model, got {type(clf_model)}'
+            )
+        preds = clf_model.predict(x_new)
         y_new_pred = np.argmax(preds, axis=1)
         y_new_prob = np.max(preds, axis=1)
     elif 'pkl' in model_path:
         with open(model_path, 'rb') as f:
             clf_model = pickle.load(f)
-        y_new_pred = clf_model.predict(X_new)
-        y_new_prob = np.max(clf_model.predict_proba(X_new), axis=1)
+        y_new_pred = clf_model.predict(x_new)
+        y_new_prob = np.max(clf_model.predict_proba(x_new), axis=1)
     else:
-        logging.error(
-            f'saved model name {model_path} is neither h5 or pkl format')
+        logging.error(f'saved model name {model_path} is neither h5 or pkl format')
         sys.exit(-1)
 
     utils.create_parent_folder(report_file_path)
@@ -87,11 +106,9 @@ def report_classification_results_helper(
         for idx, real_label in tqdm(enumerate(y_new), desc='MLP classified'):
             if only_wrongly_samples:
                 if y_new_pred[idx] != real_label:
-                    f.write(
-                        f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
+                    f.write(f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
             else:
-                f.write(
-                    f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
+                f.write(f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
     if only_wrongly_samples:
         logging.info('Reported wrongly classified samples.')
     else:
@@ -190,10 +207,8 @@ def evaluate_newfamily_as_drift_by_distance(
         acc_classifier, acc_closest, dist_one_by_one_check_result_path
     )
 
-    logging.debug(
-        f'use drift closest family as prediction accuracy:\n {acc_closest}')
-    logging.debug(
-        f'use drift closest family as prediction confusion matrix:\n {cm}')
+    logging.debug(f'use drift closest family as prediction accuracy:\n {acc_closest}')
+    logging.debug(f'use drift closest family as prediction confusion matrix:\n {cm}')
 
 
 def plot_inspection_effort_pr_value_by_dist(
@@ -243,8 +258,7 @@ def plot_inspection_effort_pr_value_by_dist(
     ax.set_title(
         'Precision Recall value as the change of inspection efforts', fontsize=12
     )
-    ax.set_xticks(np.around(np.linspace(
-        0, len(inspection_cnt_list), 10), decimals=0))
+    ax.set_xticks(np.around(np.linspace(0, len(inspection_cnt_list), 10), decimals=0))
     ax.set_xlabel('Inspection Effort (# of Samples)', fontsize=16)
     ax.set_ylabel('Rate', fontsize=16)
     ax.legend(loc='best')

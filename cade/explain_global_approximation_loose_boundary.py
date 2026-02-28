@@ -473,6 +473,10 @@ def build_target_classifier(
     )
     K.clear_session()  # to prevent load_model becomes slower and slower
     clf = load_model(model_save_path)
+    if not isinstance(clf, Model):
+        raise TypeError(
+            f'Loaded model is invalid. Expected Keras Model, got {type(clf)}'
+        )
     logging.debug(
         f'[build_target_classifier] prediction in: {list(np.argmax(clf.predict(x[0 : len(z_in)]), axis=1))}'
     )

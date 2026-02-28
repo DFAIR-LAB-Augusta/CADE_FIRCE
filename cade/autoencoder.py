@@ -12,10 +12,12 @@ import os
 import random
 import time
 import warnings
+from collections.abc import Callable
+from typing import Any, Literal
 
 import numpy as np
 import tensorflow as tf
-from keras import backend as K
+from keras import backend as k
 from keras.callbacks import ModelCheckpoint
 from keras.layers import Dense, Input
 from keras.models import Model
@@ -48,20 +50,24 @@ config.gpu_options.per_process_gpu_memory_fraction = 0.5
 
 class Autoencoder:
     def __init__(
-        self, dims, activation='relu', init='glorot_uniform', verbose=1
+        self,
+        dims: list[int],
+        activation: str = 'relu',
+        init: str = 'glorot_uniform',
+        verbose: int = 1,
     ) -> None:
         """
         dims: list of number of units in each layer of encoder. dims[0] is input dim, dims[-1] is units in hidden layer.
         The decoder is symmetric with encoder. So number of layers of the auto-encoder is 2*len(dims)-1
         activation: activation, not applied to Input, last layer of the encoder, and Output layers
 
-        """
+        """  # noqa: E501
         self.dims = dims
         self.act = activation
         self.init = init
         self.verbose = verbose
 
-    def build(self):
+    def build(self) -> tuple[Model, Model]:
         """Fully connected auto-encoder model, symmetric.
 
         return:
@@ -81,13 +87,13 @@ class Autoencoder:
                 dims[i + 1],
                 activation=act,
                 kernel_initializer=init,
-                name='encoder_%d' % i,
+                name=f'encoder_{i}',
             )(x)
-            # kernel_initializer is a fancy term for which statistical distribution or function to use for initializing the weights. Neural network needs to start with some weights and then iteratively update them
+            # kernel_initializer is a fancy term for which statistical distribution or function to use for initializing the weights. Neural network needs to start with some weights and then iteratively update them  # noqa: E501
 
-        # hidden layer, features are extracted from here, no activation is applied here, i.e., "linear" activation: a(x) = x
+        # hidden layer, features are extracted from here, no activation is applied here, i.e., "linear" activation: a(x) = x  # noqa: E501
         encoded = Dense(
-            dims[-1], kernel_initializer=init, name='encoder_%d' % (n_stacks - 1)
+            dims[-1], kernel_initializer=init, name=f'encoder_{n_stacks - 1}'
         )(x)
         self.encoded = encoded
 
@@ -95,7 +101,10 @@ class Autoencoder:
         # internal layers in decoder
         for i in range(n_stacks - 1, 0, -1):
             x = Dense(
-                dims[i], activation=act, kernel_initializer=init, name='decoder_%d' % i
+                dims[i],
+                activation=act,
+                kernel_initializer=init,
+                name=f'decoder_{i}',  # Fixed UP031
             )(x)
 
         # output
@@ -108,7 +117,13 @@ class Autoencoder:
         return ae, encoder
 
     def train_and_save(
-        self, X, weights_save_name, lr=0.001, batch_size=32, epochs=250, loss='mse'
+        self,
+        x: np.ndarray,
+        weights_save_name: str,
+        lr: float = 0.001,
+        batch_size: int = 32,
+        epochs: int = 250,
+        _loss: str = 'mse',
     ) -> None:
         if os.path.exists(weights_save_name):
             logging.info('weights file exists, no need to train pure AE')
@@ -137,23 +152,25 @@ class Autoencoder:
             )
 
             autoencoder.fit(
-                X,
-                X,
+                x,
+                x,
                 epochs=epochs,
                 batch_size=batch_size,
-                verbose=1,
+                verbose=str(1),
                 callbacks=[mcp_save, logger.LoggingCallback(logging.debug)],
             )
 
-    def evaluate_quality(self, X_old, y_old, model_save_name):
+    def evaluate_quality(
+        self, x_old: np.ndarray, y_old: np.ndarray, model_save_name: str
+    ) -> float | Literal[0]:
         if not os.path.exists(model_save_name):
-            self.train_and_save(X_old, model_save_name)
+            self.train_and_save(x_old, model_save_name)
 
-        K.clear_session()
+        k.clear_session()
         _autoencoder, encoder = self.build()
         encoder.load_weights(model_save_name, by_name=True)
         logging.debug(f'Load weights from {model_save_name}')
-        latent = encoder.predict(X_old)
+        latent = encoder.predict(x_old)
 
         best_acc = 0
         best_n_init = 10
@@ -163,9 +180,7 @@ class Autoencoder:
         warnings.filterwarnings('ignore')
 
         for n_init in range(10, 110, 10):
-            kmeans = KMeans(
-                n_clusters=num_classes, n_init=n_init, random_state=42, n_jobs=-1
-            )
+            kmeans = KMeans(n_clusters=num_classes, n_init=n_init, random_state=42)
             y_pred = kmeans.fit_predict(latent)
             acc = utils.get_cluster_acc(y_old, y_pred)
             logging.debug(f'KMeans n_init: {n_init}, acc: {acc}')
@@ -173,43 +188,49 @@ class Autoencoder:
                 best_n_init = best_n_init
                 best_acc = acc
         logging.info(
-            f'best accuracy of KMeans on latent data: {best_acc} with n_init {best_n_init}'
+            f'best accuracy of KMeans on latent data: {best_acc} with n_init {best_n_init}'  # noqa: E501
         )
         return best_acc
 
 
 class ContrastiveAE:
-    def __init__(self, dims, optimizer, lr, verbose=1) -> None:
+    def __init__(
+        self,
+        dims: list[int],
+        optimizer: Callable[[float], Any],
+        lr: float,
+        verbose: int = 1,
+    ) -> None:
         self.dims = dims
         self.optimizer = optimizer(lr)
         self.verbose = verbose
 
     def train(
         self,
-        X_train,
-        y_train,
-        lambda_1,
-        batch_size,
-        epochs,
-        similar_ratio,
-        margin,
-        weights_save_name,
-        display_interval,
+        x_train: np.ndarray,
+        y_train: np.ndarray,
+        lambda_1: float,
+        batch_size: int,
+        epochs: int,
+        similar_ratio: float,
+        margin: float,
+        weights_save_name: str,
+        display_interval: int,
     ) -> None:
-        """Train an autoencoder with standard mse loss + contrastive loss.
-
-        Arguments:
-            X_train {numpy.ndarray} -- feature vectors of the training data
-            y_train {numpy.ndarray} -- ground-truth labels of the training data
-            lambda_1 {float} -- balance factor for the autoencoder reconstruction loss and contrastive loss
-            batch_size {int} -- number of samples in each batch (note we only use **half of batch_size**
-                                from the training data).
-            epochs {int} -- No. of maximum epochs.
-            similar_ratio {float} -- ratio of similar samples, use 0.25 for now.
-            margin {float} -- the hyper-parameter m.
-            weights_save_name {str} -- file path to save the best weights files.
-            display_interval {int} -- print traning logs per {display_interval} epoches
         """
+        Train an autoencoder with standard MSE loss + contrastive loss.
+
+        Args:
+            x_train: Feature vectors of the training data.
+            y_train: Ground-truth labels of the training data.
+            lambda_1: Balance factor between reconstruction loss and contrastive loss.
+            batch_size: Total samples per batch (note: only half are from training data).
+            epochs: Maximum number of training epochs.
+            similar_ratio: Ratio of similar samples to generate (e.g., 0.25).
+            margin: The margin hyper-parameter (m) for contrastive loss.
+            weights_save_name: File path to save the best weights.
+            display_interval: Epoch interval for printing training logs.
+        """  # noqa: E501
         if os.path.exists(weights_save_name):
             logging.info('weights file exists, no need to train contrastive AE')
         else:
@@ -222,14 +243,14 @@ class ContrastiveAE:
 
             input_ = ae_model.get_input_at(0)
 
-            # add loss function -- for efficiency and not doubling the network's weights, we pass a batch of samples and
+            # add loss function -- for efficiency and not doubling the network's weights, we pass a batch of samples and  # noqa: E501
             # make the pairs from it at the loss level.
-            left_p = tf.convert_to_tensor(list(range(int(batch_size / 2))), np.int32)
+            left_p = tf.convert_to_tensor(list(range(int(batch_size / 2))), tf.int32)
             right_p = tf.convert_to_tensor(
-                list(range(int(batch_size / 2), batch_size)), np.int32
+                list(range(int(batch_size / 2), batch_size)), tf.int32
             )
 
-            # left_p: indices with all the data in this batch, right_p: half with similar data compared to left_p, half with dissimilar data compared to left_p
+            # left_p: indices with all the data in this batch, right_p: half with similar data compared to left_p, half with dissimilar data compared to left_p  # noqa: E501
             # if batch_size = 16 (but only using 8 samples in this batch):
             # e.g., left_p labels: 1, 2, 4, 8 | 2, 3, 5, 6
             #      right_p labels: 1, 2, 4, 8 | 3, 4, 1, 7
@@ -238,7 +259,7 @@ class ContrastiveAE:
                 tf.equal(tf.gather(labels, left_p), tf.gather(labels, right_p)),
                 tf.float32,
             )
-            # NOTE: add a small number like 1e-10 would prevent tf.sqrt() to have 0 values, further leading gradients and loss all NaN.
+            # NOTE: add a small number like 1e-10 would prevent tf.sqrt() to have 0 values, further leading gradients and loss all NaN.  # noqa: E501
             # check: https://stackoverflow.com/questions/33712178/tensorflow-nan-bug
             dist = tf.sqrt(
                 tf.reduce_sum(
@@ -284,7 +305,7 @@ class ContrastiveAE:
                     epoch_time = time.time()
                     # split data into batches
                     batch_count, batch_x, batch_y = data.epoch_batches(
-                        X_train, y_train, batch_size, similar_ratio
+                        x_train, y_train, batch_size, similar_ratio
                     )
                     # batch training loop
                     for b in range(batch_count):

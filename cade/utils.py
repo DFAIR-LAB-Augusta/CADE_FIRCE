@@ -160,8 +160,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         '--mlp-lr', default=0.001, type=float, help='MLP classifier Adam learning rate.'
     )
-    p.add_argument('--mlp-epochs', default=50, type=int,
-                   help='MLP classifier epochs.')
+    p.add_argument('--mlp-epochs', default=50, type=int, help='MLP classifier epochs.')
     p.add_argument(
         '--mlp-dropout', default=0.2, type=float, help='MLP classifier Droput rate.'
     )
