@@ -15,7 +15,7 @@ For "02_20_2018.csv" file, it has 4 extra features in the beninning (Flow ID, Sr
 import os
 import traceback
 from collections import Counter
-from datetime import datetime
+from datetime import UTC, datetime
 from timeit import default_timer as timer
 
 import numpy as np
@@ -58,7 +58,30 @@ TRAFFIC_LABEL = {
 }
 
 
-def clean_single_file(filename, is_specific=False) -> None:
+def clean_single_file(filename: str, *, is_specific: bool = False) -> None:
+    """
+    Cleans, normalizes, and deduplicates network traffic data from a CSV file.
+
+    The function performs several preprocessing steps:
+    1.  Parses raw CSV lines and extracts features/labels.
+    2.  Filters out rows containing 'NaN', 'Infinity', or malformed headers.
+    3.  Validates and converts human-readable timestamps to UTC Unix epochs.
+    4.  Deduplicates identical traffic flows and sorts them chronologically.
+    5.  Maps semantic labels to numeric IDs and saves the result as a .npz archive.
+
+    Args:
+        filename: The absolute or relative path to the input CSV file.
+        is_specific: A keyword-only boolean flag. If True, skips the first 4 
+            columns to accommodate specific non-standard data formats 
+            (e.g., the 02_20_2018 file).
+
+    Returns:
+        None. The processed data is saved to a compressed file in SAVE_PATH.
+
+    Raises:
+        FileNotFoundError: If the input file cannot be located.
+        KeyError: If a traffic label in the CSV is missing from the TRAFFIC_LABEL map.
+    """
     traffic_contain_null_count = 0
     traffic_contain_infinity_count = 0
     traffic_invalid_timestamp_count = 0
@@ -68,10 +91,11 @@ def clean_single_file(filename, is_specific=False) -> None:
 
     print(f'cleaning file {filename}...')
 
-    """remove traffic with NaN and Infinity values, read the file content into a numpy array."""
+    """remove traffic with NaN and Infinity values, read the file content into a numpy array."""  # noqa: E501
     with open(filename) as f:
         date_str = (
-            filename.replace('.csv', '').replace('_', '/').replace(RAW_DATA_PATH, '')
+            filename.replace('.csv', '').replace(
+                '_', '/').replace(RAW_DATA_PATH, '')
         )
         date_str = date_str[3:5] + '/' + date_str[0:2] + date_str[5:]
         print(f'date_str: {date_str}')
@@ -99,46 +123,53 @@ def clean_single_file(filename, is_specific=False) -> None:
                     continue
                 # convert datetime to UNIX timestamp
                 line[2] = str(
-                    datetime.strptime(line[2], '%d/%m/%Y %H:%M:%S').timestamp()
+                    datetime.strptime(line[2], '%d/%m/%Y %H:%M:%S')
+                    .replace(tzinfo=UTC)
+                    .timestamp()
                 )
                 traffics.append(line)
-            except:
-                print(f'{filename} line {idx} error')
+            except (ValueError, IndexError) as e:
+                # These are "expected" data quality issues
+                print(f"Skipping malformed data at {filename} line {idx}: {e}")
+                continue
+            except Exception:
+                # This catches unexpected logic errors but allows KeyboardInterrupt
+                print(f'{filename} line {idx} unexpected error')
                 print(traceback.format_exc())
     print('===================\n')
     print(f'total # traffic is {len(contents)}')
     print(f'traffic that has NaN values: {traffic_contain_null_count}')
-    print(f'traffic that has Infinity values: {traffic_contain_infinity_count}')
-    print(f'traffic that has invalid timestamp: {traffic_invalid_timestamp_count}')
+    print(
+        f'traffic that has Infinity values: {traffic_contain_infinity_count}')
+    print(
+        f'traffic that has invalid timestamp: {traffic_invalid_timestamp_count}')
 
     traffics = np.array(traffics)
-    print(f'after removing NaN, Infinity, and invalid, traffic shape: {traffics.shape}')
+    print(
+        f'after removing NaN, Infinity, and invalid, traffic shape: {traffics.shape}')
 
-    """remove duplicate traffics and save feature vectors, assigned labels, semantic labels to a compressed file."""
+    """remove duplicate traffics and save feature vectors, assigned labels, semantic labels to a compressed file."""  # noqa: E501
     # np.unique will sort instead of keeping the original order.
     unique_traffics = np.unique(traffics, axis=0)
     sorted_traffics = unique_traffics[
         np.argsort(unique_traffics[:, 2])
     ]  # sort by the timestamp of the traffic
 
-    X = sorted_traffics[:, 0:-1].astype(np.float)  # feature vectors
+    x = sorted_traffics[:, 0:-1].astype(float)  # feature vectors
     # full name indicating the meaning of the label.
     y_name = sorted_traffics[:, -1]
 
-    y = []  # assigned labels
-    for name in y_name:
-        y.append(TRAFFIC_LABEL[name])  # convert label name to number
-    y = np.array(y)
-
+    y = np.array([TRAFFIC_LABEL[name] for name in y_name])
     base_filename = os.path.basename(filename)
-    save_file_path = os.path.join(SAVE_PATH, base_filename.replace('csv', 'npz'))
+    save_file_path = os.path.join(
+        SAVE_PATH, base_filename.replace('csv', 'npz'))
 
-    np.savez_compressed(save_file_path, X=X, y=y, y_name=y_name)
-    print(f'sorted traffics shape: {X.shape}')
+    np.savez_compressed(save_file_path, X=x, y=y, y_name=y_name)
+    print(f'sorted traffics shape: {x.shape}')
     print(f'labels shape: {y.shape}')
     print(f'label names shape: {y_name.shape}')
     print(
-        f'percentage of kept traffic (removing NaN, Infinity, duplicates): {X.shape[0] / len(contents)}'
+        f'percentage of kept traffic (removing NaN, Infinity, duplicates): {x.shape[0] / len(contents)}'  # noqa: E501
     )
     print('===================\n')
 
