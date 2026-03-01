@@ -49,8 +49,7 @@ def main(
     """
     report_dir = 'reports' if use_pure_ae == 0 else 'pure_ae_reports'
 
-    families = range(families_cnt) if dataset == 'drebin' else range(
-        1, families_cnt)
+    families = range(families_cnt) if dataset == 'drebin' else range(1, families_cnt)
 
     # Only used by IDS, outside to prevent unbound errors
     name_dict = {1: 'SSH', 2: 'Hulk', 3: 'Infilteration'}
@@ -73,8 +72,7 @@ def main(
             single_dataset = f'IDS_new_{name_dict[i]}'
             name = name_dict[i]
 
-        _x_train, _y_train, _x_test, y_test = data.load_features(
-            single_dataset, i)
+        _x_train, _y_train, _x_test, y_test = data.load_features(single_dataset, i)
 
         total_new_family = len(np.where(y_test == last_label)[0])
 
@@ -86,10 +84,8 @@ def main(
         )
         with open(result_path) as f:
             content = f.read()
-        precision = float(re.findall(p1, content)[
-                          0].replace('precision: ', '')) / 100
-        recall = float(re.findall(p2, content)[
-                       0].replace('recall: ', '')) / 100
+        precision = float(re.findall(p1, content)[0].replace('precision: ', '')) / 100
+        recall = float(re.findall(p2, content)[0].replace('recall: ', '')) / 100
         f1 = float(re.findall(p3, content)[0].replace('f1: ', '')) / 100
         inspect_cnt = int(
             re.findall(p4, content)[0].replace('best inspection count: ', '')
@@ -120,8 +116,7 @@ def main(
     print(
         f'precision: {np.average(precision_list) * 100:.2f}% +/- {np.std(precision_list):.2f}'  # noqa: E501
     )
-    print(
-        f'recall: {np.average(recall_list) * 100:.2f}% +/- {np.std(recall_list):.2f}')
+    print(f'recall: {np.average(recall_list) * 100:.2f}% +/- {np.std(recall_list):.2f}')
     print(f'f1: {np.average(f1_list) * 100:.2f}% +/- {np.std(f1_list):.2f}')
     print(
         f'inspect_cnt: {np.average(inspect_cnt_list):.2f} +/- {np.std(inspect_cnt_list):.2f}'  # noqa: E501
@@ -154,8 +149,7 @@ def main(
         f.write(
             f'recall: {np.average(recall_list) * 100:.2f}% +/- {np.std(recall_list):.2f}\n'  # noqa: E501
         )
-        f.write(
-            f'f1: {np.average(f1_list) * 100:.2f}% +/- {np.std(f1_list):.2f} \n')
+        f.write(f'f1: {np.average(f1_list) * 100:.2f}% +/- {np.std(f1_list):.2f} \n')
         f.write(
             f'inspect_cnt: {np.average(inspect_cnt_list):.2f} +/- {np.std(inspect_cnt_list):.2f}\n'  # noqa: E501
         )
@@ -198,5 +192,4 @@ if __name__ == '__main__':
     margin = 10.0
     cae_lambda = 0.1
 
-    main(dataset, use_pure_ae, families_cnt,
-         last_label, margin, mad, cae_lambda)
+    main(dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda)
