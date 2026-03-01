@@ -10,16 +10,18 @@ testing drift to build a loose approximation model (does not really reflect the 
 
 """  # noqa: E501
 
+import argparse
 import logging
 import os
 import random
 import re
 import traceback
 from functools import partial
+from typing import Any
 
 import numpy as np
 import tensorflow as tf
-from keras import backend as K
+from keras import backend as k
 from keras.layers import Dense, Dropout, Input
 from keras.models import Model, load_model
 from numpy.random import seed
@@ -42,94 +44,112 @@ set_random_seed(2)
 
 
 def explain_drift_samples_per_instance(
-    X_train,
-    y_train,
-    X_test,
-    y_test,
-    args,
-    one_by_one_check_result_path,
-    training_info_for_detect_path,
-    cae_weights_path,
-    saved_exp_classifier_folder,
-    mask_file_path,
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+    _y_test: np.ndarray,
+    args: argparse.Namespace,
+    one_by_one_check_result_path: str,
+    training_info_for_detect_path: str,
+    cae_weights_path: str,
+    saved_exp_classifier_folder: str,
+    mask_file_path: str,
 ) -> None:
     if os.path.exists(mask_file_path):
         logging.info(
-            f'explanation result file {mask_file_path} exists, no need to run explanation module'
+            f'explanation result file {mask_file_path} exists, no need to run explanation module'  # noqa: E501
         )
-    else:
-        drift_samples_idx_list, _drift_samples_real_labels, drift_samples_closest = (
-            get_drift_samples_to_explain(one_by_one_check_result_path)
-        )
+        return
+    drift_samples_idx_list, _drift_samples_real_labels, drift_samples_closest = (
+        get_drift_samples_to_explain(one_by_one_check_result_path)
+    )
 
-        mad_threshold = args.mad_threshold
+    mad_threshold: float = args.mad_threshold
 
-        cae_dims = utils.get_model_dims(
-            'Contrastive AE', X_train.shape[1], args.cae_hidden, len(np.unique(y_train))
-        )
+    cae_dims = utils.get_model_dims(
+        'Contrastive AE', x_train.shape[1], args.cae_hidden, len(np.unique(y_train))
+    )
 
-        # load CAE encoder
-        encoder_model = load_encoder(cae_dims, cae_weights_path)
+    # load CAE encoder
+    encoder_model = load_encoder(cae_dims, cae_weights_path)
 
-        """get all the drift samples from the testing set, separated by their closest family"""
-        test_z_drift_family = get_z_drift_from_testing_set_by_family(
-            X_test, drift_samples_idx_list, drift_samples_closest, encoder_model
-        )
+    """get all the drift samples from the testing set, separated by their closest family"""  # noqa: E501
+    test_z_drift_family = get_z_drift_from_testing_set_by_family(
+        x_test, drift_samples_idx_list, drift_samples_closest, encoder_model
+    )
 
-        # build global target explanation model for each family (closest one to the testing samples)
-        X_in_family = build_global_exp_model_for_each_closest_family(
-            X_train,
-            y_train,
-            test_z_drift_family,
-            drift_samples_closest,
-            training_info_for_detect_path,
-            mad_threshold,
-            saved_exp_classifier_folder,
-            cae_dims,
-            cae_weights_path,
-        )
-        """explain drift per instance """
-        masks = []
-        X_drift_list = []
-        for idx, sample_idx in tqdm(
-            enumerate(drift_samples_idx_list),
-            total=len(drift_samples_idx_list),
-            desc='explain drift',
-        ):
-            try:
-                x_target = X_test[sample_idx]
-                X_drift_list.append(x_target)
+    # build global target explanation model for each family (closest one to the testing samples)  # noqa: E501
+    x_in_family = build_global_exp_model_for_each_closest_family(
+        x_train,
+        y_train,
+        test_z_drift_family,
+        drift_samples_closest,
+        training_info_for_detect_path,
+        mad_threshold,
+        saved_exp_classifier_folder,
+        cae_dims,
+        cae_weights_path,
+    )
+    """explain drift per instance """
+    masks = []
+    x_drift_list = []
+    for idx, sample_idx in tqdm(
+        enumerate(drift_samples_idx_list),
+        total=len(drift_samples_idx_list),
+        desc='explain drift',
+    ):
+        try:
+            x_target = x_test[sample_idx]
+            x_drift_list.append(x_target)
 
-                closest_family = drift_samples_closest[idx]
+            closest_family = drift_samples_closest[idx]
 
-                logging.debug(f'idx-[{idx}] closest family: {closest_family}')
+            logging.debug(f'idx-[{idx}] closest family: {closest_family}')
 
-                logging.debug('[explanation] explain single instance...')
-                final_model_path = os.path.join(
-                    saved_exp_classifier_folder,
-                    f'final_model_family_{closest_family}.h5',
-                )
-                os.path.join(
-                    saved_exp_classifier_folder, f'exp_mlp_family_{closest_family}.h5'
-                )
+            logging.debug('[explanation] explain single instance...')
+            final_model_path = os.path.join(
+                saved_exp_classifier_folder,
+                f'final_model_family_{closest_family}.h5',
+            )
+            os.path.join(
+                saved_exp_classifier_folder, f'exp_mlp_family_{closest_family}.h5'
+            )
 
-                diff = x_target - X_in_family[closest_family][-1]
-                diff_idx = np.where(diff != 0)[0]
+            diff = x_target - x_in_family[closest_family][-1]
+            diff_idx = np.where(diff != 0)[0]
 
-                mask = explain_instance(
-                    x_target, args.exp_lambda_1, diff_idx, final_model_path
-                )
-                masks.append(mask)
-                logging.debug('[explanation] explain single instance finished...')
+            mask = explain_instance(
+                x_target, args.exp_lambda_1, diff_idx, final_model_path
+            )
+            masks.append(mask)
+            logging.debug('[explanation] explain single instance finished...')
 
-            except:
-                logging.error(f'idx: {idx}, sample_idx: {sample_idx}')
-                logging.error(traceback.format_exc())
+        except Exception:
+            logging.error(f'idx: {idx}, sample_idx: {sample_idx}')
+            logging.error(traceback.format_exc())
 
-        np.savez_compressed(mask_file_path, masks=masks)
+    np.savez_compressed(mask_file_path, masks=masks)
 
 
-def get_drift_samples_to_explain(one_by_one_check_result_path):
+def get_drift_samples_to_explain(
+    one_by_one_check_result_path: str,
+) -> tuple[list[int], list[int], list[int]]:
+    """
+    Extract drift samples from a check result file based on the best inspection count.
+
+    This function parses a log file to find a specific 'best inspection count'
+    pattern, then extracts that many samples from the subsequent CSV-formatted data.
+
+    Args:
+        one_by_one_check_result_path: Path to the file containing inspection
+            counts and sample data.
+
+    Returns:
+        A tuple containing three lists:
+            - drift_samples_idx_list: The indices of the identified drift samples.
+            - drift_samples_real_labels: The ground-truth labels of these samples.
+            - drift_samples_closest: The labels of the closest historical families.
+    """
     pattern = re.compile(r'best inspection count: \d+')
     with open(one_by_one_check_result_path) as f:
         inspect_cnt = int(
@@ -156,9 +176,22 @@ def get_drift_samples_to_explain(one_by_one_check_result_path):
     return drift_samples_idx_list, drift_samples_real_labels, drift_samples_closest
 
 
-def load_encoder(cae_dims, cae_weights_path):
-    # be careful with this it may clean up previous loaded models.
-    K.clear_session()
+def load_encoder(cae_dims: list[int], cae_weights_path: str) -> Model:
+    """
+    Build the Autoencoder architecture and load specific weights for the encoder.
+
+    Args:
+        cae_dims: List of dimensions defining the Autoencoder layers.
+        cae_weights_path: File path to the pre-trained .h5 weights.
+
+    Returns:
+        The instantiated Keras Model containing only the encoder layers.
+
+    Note:
+        This function calls k.clear_session(), which destroys the current
+        TF graph and removes all existing models from memory.
+    """
+    k.clear_session()
     ae = Autoencoder(cae_dims)
     _ae_model, encoder_model = ae.build()
     encoder_model.load_weights(cae_weights_path, by_name=True)
@@ -166,12 +199,29 @@ def load_encoder(cae_dims, cae_weights_path):
 
 
 def get_z_drift_from_testing_set_by_family(
-    X_test, drift_samples_idx_list, drift_samples_closest, encoder_model
-):
+    x_test: np.ndarray,
+    drift_samples_idx_list: list[int],
+    drift_samples_closest: list[int],
+    encoder_model: Model,
+) -> dict[int, np.ndarray]:
+    """
+    Extract latent representations for drift samples and group them by closest family.
+
+    Args:
+        x_test: The full testing dataset feature vectors.
+        drift_samples_idx_list: Indices of the samples identified as drifting.
+        drift_samples_closest: The label of the closest historical family for
+            each drift sample.
+        encoder_model: The trained Keras encoder model used for dimensionality reduction.
+
+    Returns:
+        A dictionary mapping family labels (int) to arrays of latent
+        representations (np.ndarray) for the identified drift samples.
+    """  # noqa: E501
     test_z_drift_family = {}
 
-    X_test_drift = X_test[drift_samples_idx_list]
-    z_test_drift = encoder_model.predict(X_test_drift)
+    x_test_drift = x_test[drift_samples_idx_list]
+    z_test_drift = encoder_model.predict(x_test_drift)
     for family in np.unique(drift_samples_closest):
         test_z_drift_family[family] = z_test_drift[
             np.where(drift_samples_closest == family)[0]
@@ -184,17 +234,17 @@ def get_z_drift_from_testing_set_by_family(
 
 
 def build_global_exp_model_for_each_closest_family(
-    X_train,
-    y_train,
-    test_z_drift_family,
-    drift_samples_closest,
-    training_info_for_detect_path,
-    mad_threshold,
-    saved_exp_classifier_folder,
-    cae_dims,
-    cae_weights_path,
-):
-    X_in_family = {}
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    test_z_drift_family: dict[int, np.ndarray],
+    drift_samples_closest: list[int],
+    training_info_for_detect_path: str,
+    mad_threshold: float,
+    saved_exp_classifier_folder: str,
+    cae_dims: list[int],
+    cae_weights_path: str,
+) -> dict[Any, np.ndarray]:
+    x_in_family = {}
     for family in np.unique(drift_samples_closest):
         """first need to synthesize more drift samples to balance in-dist and drift"""
         _z_train, z_closest_family, centroid, dis_to_centroid, mad = load_training_info(
@@ -206,16 +256,16 @@ def build_global_exp_model_for_each_closest_family(
             f'[family-{family}] distance lower bound (to be an drift): {lower_bound}'
         )
 
-        X_train_family = X_train[np.where(y_train == family)[0]]
-        z_in, z_drift, X_in = get_in_and_out_distribution_samples(
-            X_train_family,
+        x_train_family = x_train[np.where(y_train == family)[0]]
+        z_in, z_drift, x_in = get_in_and_out_distribution_samples(
+            x_train_family,
             z_closest_family,
             dis_to_centroid,
             centroid,
             mad,
             mad_threshold,
         )
-        X_in_family[family] = X_in
+        x_in_family[family] = x_in
 
         approximation_mlp_model_path = os.path.join(
             saved_exp_classifier_folder, f'exp_mlp_family_{family}.h5'
@@ -223,7 +273,7 @@ def build_global_exp_model_for_each_closest_family(
 
         if os.path.exists(approximation_mlp_model_path):
             logging.info(
-                f'approximation model file {approximation_mlp_model_path} exists, no need to rerun'
+                f'approximation model file {approximation_mlp_model_path} exists, no need to rerun'  # noqa: E501
             )
         else:
             """
@@ -234,7 +284,7 @@ def build_global_exp_model_for_each_closest_family(
 
             cnt_syn_drift = (
                 len(z_in) - len(test_z_drift)
-            )  # for IDS data, it's better not to generate more drift data because testing drift are enough.
+            )  # for IDS data, it's better not to generate more drift data because testing drift are enough.  # noqa: E501
             if cnt_syn_drift > 0:
                 z_syn_in, z_syn_drift = synthesize_local_samples(
                     test_z_drift,
@@ -265,11 +315,11 @@ def build_global_exp_model_for_each_closest_family(
                 f'[explantion] build a global classifier for family-{family}...'
             )
             z_weights = None  # DO not use weights at this time.
-            NUM_LATENT_FEATURES = z_in.shape[1]
+            num_latent_feats = z_in.shape[1]
             # there are only two classes: in-distribution and drift.
             num_classes = 2
             # NOTE: here use 8-15-2 for drebin, 3-15-2 for IDS
-            mlp_dims = [NUM_LATENT_FEATURES, 15, num_classes]
+            mlp_dims = [num_latent_feats, 15, num_classes]
             dropout_ratio = 0  # do not use dropout here
 
             build_target_classifier(
@@ -299,10 +349,28 @@ def build_global_exp_model_for_each_closest_family(
                 final_model_path,
             )
 
-    return X_in_family
+    return x_in_family
 
 
-def load_training_info(training_info_for_detect_path, closest_family):
+def load_training_info(
+    training_info_for_detect_path: str, closest_family: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+    """
+    Load saved training statistics and extract data for a specific family.
+
+    Args:
+        training_info_for_detect_path: Path to the .npz file containing
+            z_train, z_family, centroids, dis_family, and mad_family.
+        closest_family: The integer index of the family to extract.
+
+    Returns:
+        A tuple containing:
+            - z_train (np.ndarray): The full latent representation of training data.
+            - z_closest_family (np.ndarray): Latent vectors for the specific family.
+            - centroid (np.ndarray): The mean latent vector for the family.
+            - dis_to_centroid (np.ndarray): Distances of family samples to centroid.
+            - mad (float): The Median Absolute Deviation for the family.
+    """
     info = np.load(training_info_for_detect_path)
     z_train = info['z_train']
     z_family = info['z_family']
@@ -324,15 +392,39 @@ def load_training_info(training_info_for_detect_path, closest_family):
 
 
 def get_in_and_out_distribution_samples(
-    X_train_family, z_closest_family, dis_to_centroid, centroid, mad, mad_threshold
-):
+    x_train_family: np.ndarray,
+    z_closest_family: np.ndarray,
+    dis_to_centroid: np.ndarray,
+    centroid: np.ndarray,
+    mad: float,
+    mad_threshold: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Partition training samples into in-distribution and out-distribution sets.
 
+    This function sorts samples by their distance to the centroid and identifies
+    the boundary where samples transition from drifting (outliers) to in-distribution.
+
+    Args:
+        x_train_family: Raw feature vectors for the specific family.
+        z_closest_family: Latent representations (embeddings) for the family.
+        dis_to_centroid: Pre-calculated distances of training samples to the centroid.
+        centroid: The mean latent vector for the family.
+        mad: The Median Absolute Deviation for the family.
+        mad_threshold: The multiplier for MAD to define the drift boundary.
+
+    Returns:
+        A tuple containing:
+            - all_in_distribution (np.ndarray): Latent vectors of ID samples.
+            - all_out_distribution (np.ndarray): Latent vectors of OOD samples.
+            - x_train_family_in_dist (np.ndarray): Raw features of ID samples.
+    """
     # step 1: ranked by training samples' distance to the centroid
     dis_to_centroid_inds = np.array(dis_to_centroid).argsort()[
         ::-1
     ]  # dis descending order
     z_closest_family_sorted = z_closest_family[dis_to_centroid_inds]
-    X_train_family_sorted = X_train_family[dis_to_centroid_inds]
+    x_train_family_sorted = x_train_family[dis_to_centroid_inds]
 
     # step 2: only keep samples flagged as in-distribution by our detection module
     stop_idx = 0
@@ -348,37 +440,60 @@ def get_in_and_out_distribution_samples(
             break
 
     all_in_distribution = z_closest_family_sorted[stop_idx:, :]
-    X_train_family_in_dist = X_train_family_sorted[stop_idx:, :]
+    x_train_family_in_dist = x_train_family_sorted[stop_idx:, :]
 
     all_out_distribution = z_closest_family_sorted[0:stop_idx, :]
 
     logging.debug(f'all_in_distribution.shape: {all_in_distribution.shape}')
     logging.debug(f'all_out_distribution.shape: {all_out_distribution.shape}')
     logging.debug(
-        f'training set drift ratio: {len(all_out_distribution) / len(z_closest_family):.3f}'
+        f'training set drift ratio: {len(all_out_distribution) / len(z_closest_family):.3f}'  # noqa: E501
     )
-    logging.debug(f'X_train_family_in_dist.shape: {X_train_family_in_dist.shape}')
+    logging.debug(f'X_train_family_in_dist.shape: {x_train_family_in_dist.shape}')
 
-    return all_in_distribution, all_out_distribution, X_train_family_in_dist
+    return all_in_distribution, all_out_distribution, x_train_family_in_dist
 
 
 def synthesize_local_samples(
-    z_group, cnt_syn, centroid, dis_to_centroid, mad, mad_threshold, base_label
-):
-    # No. of times each sample synthesize
-    augment_times = round(cnt_syn / len(z_group))
+    z_group: np.ndarray,
+    cnt_syn: int,
+    centroid: np.ndarray,
+    dis_to_centroid: np.ndarray,
+    mad: float,
+    mad_threshold: float,
+    base_label: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Synthesize local latent samples using Gaussian noise and classify as ID or drift.
 
+    Args:
+        z_group: Original latent vectors to serve as the basis for synthesis.
+        cnt_syn: Total number of samples to synthesize.
+        centroid: The mean latent vector of the target family.
+        dis_to_centroid: Training distances used for the drift detection boundary.
+        mad: Median Absolute Deviation of the target family.
+        mad_threshold: Multiplier for MAD to define the drift boundary.
+        base_label: Label name for logging purposes.
+
+    Returns:
+        A tuple of (z_syn_in, z_syn_drift) as numpy arrays.
+    """
+    if len(z_group) == 0:
+        return np.array([]), np.array([])
+
+    # No. of times each sample is synthesized
+    augment_times = max(1, round(cnt_syn / len(z_group)))
     sigma = mad
-    logging.debug(f'noise sigma: {sigma}')
+    logging.debug(f'noise sigma: {sigma} for {base_label}')
 
-    for idx, z in enumerate(z_group):
-        syn_list = []
-        noise = np.random.normal(0, sigma, size=(len(z), augment_times))
-        for i in range(len(z)):
-            syn_list.append(z[i] + noise[i])
-        z_syn = np.transpose(np.array(syn_list))
+    all_syn_samples = []
+    for z in z_group:
+        noise = np.random.normal(0, sigma, size=(augment_times, len(z)))
+        z_syn = z + noise  # Broadcasting: adds z to every row of noise
+        all_syn_samples.append(z_syn)
 
-        z_syn_total = np.array(z_syn) if idx == 0 else np.vstack((z_syn_total, z_syn))
+    # Combine all synthesized batches into one array
+    z_syn_total = np.vstack(all_syn_samples)
 
     # (≥cnt_syn, latent_dim)
     logging.debug(f'z_syn_total.shape: {z_syn_total.shape}')
@@ -391,7 +506,7 @@ def synthesize_local_samples(
         )
         if is_drift:
             z_syn_drift.append(z_syn_total[i])
-            # logging.debug(f'synthesized drift sample to centroid dis - {i}: {np.linalg.norm(z_syn_total[i] - centroid)}')
+            # logging.debug(f'synthesized drift sample to centroid dis - {i}: {np.linalg.norm(z_syn_total[i] - centroid)}')  # noqa: E501
         else:
             z_syn_in.append(z_syn_total[i])
 
@@ -402,21 +517,30 @@ def synthesize_local_samples(
     return z_syn_in, z_syn_drift
 
 
-def detect_if_sample_is_drift(z, centroid, dis_to_centroid, mad, mad_threshold) -> bool:
+def detect_if_sample_is_drift(
+    z: np.ndarray,
+    centroid: np.ndarray,
+    dis_to_centroid: np.ndarray,
+    mad: float,
+    mad_threshold: float,
+) -> bool:
     dis = np.linalg.norm(z - centroid)
     anomaly = np.abs(dis - np.median(dis_to_centroid)) / mad
     return anomaly > mad_threshold
 
 
-def assign_weights_based_on_dist(z_in, z_drift, z_target):
+def assign_weights_based_on_dist(
+    z_in: np.ndarray, z_drift: np.ndarray, z_target: np.ndarray
+) -> np.ndarray:
     """
+    Unused
     refer LIME's code to assign sample weights
     use an exponential kernel
     weight = e^(-D(z_syn, z_target)^2 / sigma^2),
     sigma is called the kernel's width, if not specified, use sqrt(#column) * 0.75
 
     whether it's in-dist or drift, all assigned weights based on their distance to the target drift sample.
-    """
+    """  # noqa: E501
     z_all = np.vstack((z_in, z_drift))
     distances = pairwise_distances(
         z_all, z_target.reshape(1, -1), metric='euclidean'
@@ -437,13 +561,42 @@ def assign_weights_based_on_dist(z_in, z_drift, z_target):
     return weights
 
 
-def kernel(d, kernel_width):
+def kernel(d: np.ndarray, kernel_width: float) -> np.ndarray:
     return np.sqrt(np.exp(-(d**2) / kernel_width**2))
 
 
 def build_target_classifier(
-    z_in, z_drift, y_in, y_drift, dropout_ratio, z_weights, mlp_dims, model_save_path
+    z_in: np.ndarray,
+    z_drift: np.ndarray,
+    y_in: np.ndarray,
+    y_drift: np.ndarray,
+    dropout_ratio: int,
+    z_weights: None,
+    mlp_dims: list[int],
+    model_save_path: str,
 ) -> None:
+    """
+    Train and save a binary MLP classifier to distinguish between ID and drift samples.
+
+    This "explanation" classifier acts as a surrogate model. By training it on
+    latent representations of in-distribution versus out-distribution (drift)
+    samples, we can later analyze the classifier's weights or use it to explain
+    the characteristics of the detected drift.
+
+    Args:
+        z_in: Latent vectors of samples flagged as in-distribution.
+        z_drift: Latent vectors of samples flagged as drift/out-distribution.
+        y_in: Labels for in-distribution samples (typically 0).
+        y_drift: Labels for drift samples (typically 1).
+        dropout_ratio: The fraction of neurons to drop during training (0.0 to 1.0).
+        z_weights: Optional sample weights for the training process; useful if
+            classes are imbalanced.
+        mlp_dims: A list of integers defining the neurons in each hidden layer.
+        model_save_path: The file system path where the trained model (.h5) will be saved.
+
+    Raises:
+        TypeError: If the loaded model after training is not a valid Keras Model.
+    """  # noqa: E501
     mlp_classifier = classifier.MLPClassifier(
         dims=mlp_dims, model_save_name=model_save_path, dropout=dropout_ratio, verbose=0
     )  # no logs
@@ -471,17 +624,17 @@ def build_target_classifier(
         train_val_split=False,  # do not split train and val, predict on all the training set  # noqa: E501
         retrain=bool(retrain_flag),
     )
-    K.clear_session()  # to prevent load_model becomes slower and slower
+    k.clear_session()  # to prevent load_model becomes slower and slower
     clf = load_model(model_save_path)
     if not isinstance(clf, Model):
         raise TypeError(
             f'Loaded model is invalid. Expected Keras Model, got {type(clf)}'
         )
     logging.debug(
-        f'[build_target_classifier] prediction in: {list(np.argmax(clf.predict(x[0 : len(z_in)]), axis=1))}'
+        f'[build_target_classifier] prediction in: {list(np.argmax(clf.predict(x[0 : len(z_in)]), axis=1))}'  # noqa: E501
     )
     logging.debug(
-        f'[build_target_classifier] prediction drift: {list(np.argmax(clf.predict(x[len(z_in) :]), axis=1))}'
+        f'[build_target_classifier] prediction drift: {list(np.argmax(clf.predict(x[len(z_in) :]), axis=1))}'  # noqa: E501
     )
 
     y_pred = clf.predict(x)
@@ -491,13 +644,28 @@ def build_target_classifier(
 
 
 def combine_encoder_and_approximation_model(
-    cae_dims,
-    mlp_dims,
-    dropout_ratio,
-    cae_weights_path,
-    approximation_mlp_model_path,
-    final_model_save_path,
+    cae_dims: list[int],
+    mlp_dims: list[int],
+    dropout_ratio: int,
+    cae_weights_path: str,
+    approximation_mlp_model_path: str,
+    final_model_save_path: str,
 ) -> None:
+    """
+    Concatenate a pre-trained encoder and an MLP classifier into a single model.
+
+    This function reconstructs the architecture of both the encoder and the
+    surrogate MLP, then loads their respective weights. The resulting model
+    takes raw feature vectors as input and outputs the ID vs. Drift probability.
+
+    Args:
+        cae_dims: Layer dimensions of the Convolutional/Dense Autoencoder.
+        mlp_dims: Layer dimensions of the approximation (surrogate) MLP.
+        dropout_ratio: The dropout rate used in the MLP hidden layers.
+        cae_weights_path: Path to the file containing Autoencoder weights.
+        approximation_mlp_model_path: Path to the file containing MLP weights.
+        final_model_save_path: Destination path for the combined model file.
+    """
     act = 'relu'
     init = 'glorot_uniform'
     n_stacks = len(cae_dims) - 1
@@ -509,21 +677,19 @@ def combine_encoder_and_approximation_model(
             cae_dims[i + 1],
             activation=act,
             kernel_initializer=init,
-            name='encoder_%d' % i,
+            name=f'encoder_{i}',
         )(x)
     encoded = Dense(
-        cae_dims[-1], kernel_initializer=init, name='encoder_%d' % (n_stacks - 1)
+        cae_dims[-1], kernel_initializer=init, name=f'encoder_{n_stacks - 1}'
     )(x)
 
     clf_stacks = len(mlp_dims) - 1
     x2 = encoded
     for i in range(clf_stacks - 1):
-        x2 = Dense(mlp_dims[i + 1], activation='relu', name='clf_%d' % i)(x2)
+        x2 = Dense(mlp_dims[i + 1], activation='relu', name=f'clf_{i}')(x2)
         if dropout_ratio > 0:
             x2 = Dropout(dropout_ratio, seed=42)(x2)
-    data = Dense(mlp_dims[-1], activation='softmax', name='clf_%d' % (clf_stacks - 1))(
-        x2
-    )
+    data = Dense(mlp_dims[-1], activation='softmax', name=f'clf_{clf_stacks - 1}')(x2)
 
     final_model = Model(inputs=input_, outputs=data)
     final_model.load_weights(cae_weights_path, by_name=True)
@@ -531,25 +697,45 @@ def combine_encoder_and_approximation_model(
     final_model.save(final_model_save_path)
 
 
-def explain_instance(x, lambda_1, diff_idx, final_model_path):
-    OPTIMIZER = tf.train.AdamOptimizer
-    INITIALIZER = tf.keras.initializers.RandomUniform(minval=0, maxval=1)
-    LR = 1e-2  # learning rate
-    # a regularized regression method that linearly combines the L1 and L2 penalties of the lasso and ridge methods.
-    REGULARIZER = 'elasticnet'
-    EXP_EPOCH = 250
-    EXP_DISPLAY_INTERVAL = 10  # print middle result every k epochs
-    EXP_LAMBDA_PATIENCE = 20
-    EARLY_STOP_PATIENCE = 250
+def explain_instance(
+    x: np.ndarray, lambda_1: float, diff_idx: np.ndarray, final_model_path: str
+) -> np.ndarray | None:
+    """
+    Optimize a feature mask to explain why an instance was flagged as drift.
 
-    MASK_SHAPE = (x.shape[0],)
-    M1 = np.zeros(shape=(x.shape[0],), dtype=np.float32)
+    Args:
+        x: The feature vector of the sample to explain.
+        lambda_1: Regularization strength for mask sparsity.
+        diff_idx: Indices where the sample differs from the reference.
+        final_model_path: Path to the combined encoder-surrogate model.
+
+    Returns:
+        The optimized feature mask as an ndarray, or None if the sample
+        was not predicted as drift by the surrogate model.
+
+    Raises:
+        TypeError: If the loaded model is not an instance of a Keras Model.
+    """
+    optimizer = tf.train.AdamOptimizer
+    initializer = tf.keras.initializers.RandomUniform(minval=0, maxval=1)
+    learning_rate = 1e-2  # learning rate
+    # a regularized regression method that linearly combines the L1 and L2 penalties of the lasso and ridge methods.  # noqa: E501
+    regularizer = 'elasticnet'
+    exp_epoch = 250
+    exp_display_interval = 10  # print middle result every k epochs
+    exp_lambda_patience = 20
+    early_stop_patience = 250
+
+    mask_shape = (x.shape[0],)
+    m1 = np.zeros(shape=(x.shape[0],), dtype=np.float32)
     for i in diff_idx:
-        M1[i] = 1
-    logging.debug(f'MASK_SHAPE: {MASK_SHAPE}')
+        m1[i] = 1
+    logging.debug(f'MASK_SHAPE: {mask_shape}')
 
-    K.clear_session()
+    k.clear_session()
     model = load_model(final_model_path)
+    if not isinstance(model, Model):
+        raise TypeError(f'Model is not capable of predict: {type(model) = }')
     y = model.predict(x.reshape(1, -1))
     logging.debug(f'[explain_instance] y original: {y}')
 
@@ -560,23 +746,23 @@ def explain_instance(x, lambda_1, diff_idx, final_model_path):
         mask_best = None
         exp_test = mask_exp.OptimizeExp(
             input_shape=x.shape,
-            mask_shape=MASK_SHAPE,
+            mask_shape=mask_shape,
             model=model,
             num_class=2,
-            optimizer=OPTIMIZER,
-            initializer=INITIALIZER,
-            lr=LR,
-            regularizer=REGULARIZER,
+            optimizer=optimizer,
+            initializer=initializer,
+            lr=learning_rate,
+            regularizer=regularizer,
             model_file=final_model_path,
         )
 
         mask_best = exp_test.fit_local(
             X=x,
             y=y,
-            epochs=EXP_EPOCH,
+            epochs=exp_epoch,
             lambda_1=lambda_1,
-            display_interval=EXP_DISPLAY_INTERVAL,
-            lambda_patience=EXP_LAMBDA_PATIENCE,
-            early_stop_patience=EARLY_STOP_PATIENCE,
+            display_interval=exp_display_interval,
+            lambda_patience=exp_lambda_patience,
+            early_stop_patience=early_stop_patience,
         )
     return mask_best
