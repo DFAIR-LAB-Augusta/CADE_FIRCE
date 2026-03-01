@@ -6,7 +6,6 @@ Functions for caching and loading data.
 
 """
 
-import argparse
 import logging
 import os
 import random
@@ -18,6 +17,7 @@ from timeit import default_timer as timer
 import numpy as np
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import LabelEncoder
+from utils import SimConfig
 
 import cade.utils as utils
 from cade.config import config
@@ -76,9 +76,9 @@ def load_features(
     return x_train, y_train_prime, x_test, y_test_prime
 
 
-def prepare_dataset(args: argparse.Namespace) -> None:
-    if 'drebin' in args.data:
-        prepare_drebin_data(args.data, newfamily=args.newfamily_label)
+def prepare_dataset(config: SimConfig) -> None:
+    if 'drebin' in config.data:
+        prepare_drebin_data(config.data, newfamily=config.newfamily_label)
 
 
 def prepare_drebin_data(

@@ -17,7 +17,6 @@ import warnings
 
 import numpy as np
 import tensorflow as tf
-from keras import backend as K
 from keras.losses import binary_crossentropy
 from numpy.random import seed
 from sklearn.metrics import accuracy_score
@@ -35,15 +34,12 @@ seed(1)
 set_random_seed(2)
 
 
-K.tensorflow_backend._get_available_gpus()
-
-config = tf.ConfigProto()
-# allocate as-needed
+gpus = tf.config.list_physical_devices('GPU')
+config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True
-# only allow a total of half the GPU memory to be allocated
 config.gpu_options.per_process_gpu_memory_fraction = 0.5
-# create a session with the above options specified
-K.tensorflow_backend.set_session(tf.Session(config=config))
+sess = tf.compat.v1.Session(config=config)
+tf.compat.v1.keras.backend.set_session(sess)
 
 
 warnings.filterwarnings('ignore')
@@ -72,7 +68,7 @@ class OptimizeExp:
             initializer: initializer for the mask
             lr: learning rate
             regularizer: add regularization for the mask (to keep it as small as possible)
-        """
+        """  # noqa: E501
 
         self.model = model
         self.num_class = num_class
@@ -93,7 +89,7 @@ class OptimizeExp:
 
     def build_opt_func(self, input_shape, mask_shape) -> None:
         # use tf.variable_scope and tf.get_variable() to achieve "variable sharing"
-        # AUTO_REUSE: we create variables if they do not exist, and return them otherwise
+        # AUTO_REUSE: we create variables if they do not exist, and return them otherwise  # noqa: E501
         with tf.variable_scope('mask', reuse=tf.AUTO_REUSE):
             self.mask = tf.get_variable(
                 'mask', shape=mask_shape, initializer=self.initializer
@@ -103,12 +99,12 @@ class OptimizeExp:
 
         self.mask_normalized = tf.minimum(1.0, tf.maximum(self.mask_reshaped, 0.0))
 
-        # get_input_at(node_index): Retrieves the input tensor(s) of a layer at a given node. node_index = 0 corresponds to the first time the layer was called.
+        # get_input_at(node_index): Retrieves the input tensor(s) of a layer at a given node. node_index = 0 corresponds to the first time the layer was called.  # noqa: E501
         self.input = self.model.get_input_at(0)
 
         self.x_exp = (
             self.input * self.mask_normalized
-        )  # + self.fused_image * reverse_mask  # the explanation we are looking for, which contributes the most to the final prediction
+        )  # + self.fused_image * reverse_mask  # the explanation we are looking for, which contributes the most to the final prediction  # noqa: E501
         reverse_mask = tf.ones_like(self.mask_normalized) - self.mask_normalized
         self.x_remain = (
             self.input * reverse_mask
@@ -117,7 +113,7 @@ class OptimizeExp:
         """
             because it's symbolic tensor with no actual value, so can't use model.predict()
             see: https://stackoverflow.com/questions/51515253/optimizing-a-function-involving-tf-kerass-model-predict-using-tensorflow-op
-        """
+        """  # noqa: E501
         self.output_exp = self.model(
             self.x_exp
         )  # self.x_exp is the input to the self.model
@@ -186,7 +182,7 @@ class OptimizeExp:
 
         Returns:
             [numpy array] -- [the best mask we can found]
-        """
+        """  # noqa: E501
         input_ = np.expand_dims(X, axis=0).reshape(1, -1)
         logging.debug(f'input_ shape: {input_.shape}')
 
@@ -207,7 +203,7 @@ class OptimizeExp:
         # start training...
         with (
             tf.Session() as sess
-        ):  # WARNING: it has to be like this, or the weights of the model could not be really loaded.
+        ):  # WARNING: it has to be like this, or the weights of the model could not be really loaded.  # noqa: E501
             sess.run(self.mask.initializer)
             sess.run(tf.variables_initializer(self.optimizer.variables()))
             sess.run(
@@ -231,7 +227,7 @@ class OptimizeExp:
 
                 self.model.load_weights(self.model_file, by_name=True)
                 self.output_exp = self.model(self.x_exp)
-                # logging.debug('current weights: ', self.model.get_layer('encoder_0').get_weights()[0][0][:5])
+                # logging.debug('current weights: ', self.model.get_layer('encoder_0').get_weights()[0][0][:5])  # noqa: E501
 
                 """
                 debugging if the weights of the target model are correctly loaded
@@ -325,10 +321,10 @@ class OptimizeExp:
                     if loss_best > loss or loss_sparse_mask_best > loss_sparse_mask:
                         logging.debug(f'updating best loss from {loss_best} to {loss}')
                         logging.debug(
-                            f'updating best sparse mask loss from {loss_sparse_mask_best} to {loss_sparse_mask}'
+                            f'updating best sparse mask loss from {loss_sparse_mask_best} to {loss_sparse_mask}'  # noqa: E501
                         )
                         logging.debug(
-                            'Epoch %d/%d: loss = %.5f explanation_loss = %.5f remain_loss = %.5f '
+                            'Epoch %d/%d: loss = %.5f explanation_loss = %.5f remain_loss = %.5f '  # noqa: E501
                             'mask_sparse_loss = %.5f acc_remain = %.5f acc_exp = %.5f'
                             % (
                                 step + 1,

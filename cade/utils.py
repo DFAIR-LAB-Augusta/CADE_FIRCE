@@ -12,6 +12,8 @@ import os
 import random
 import sys
 import traceback
+from dataclasses import dataclass
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,18 +31,49 @@ seed(1)
 set_random_seed(2)
 
 
-def parse_args() -> argparse.Namespace:
+@dataclass(frozen=True)
+class SimConfig:
+    """Configuration for drift detection and explanation experiments."""
+
+    data: str
+    classifier: Literal['mlp', 'rf']
+    stage: Literal['detect', 'explanation']
+    pure_ae: int
+    quiet: int
+    cae_hidden: str
+    cae_batch_size: int
+    cae_lr: float
+    cae_epochs: int
+    cae_lambda_1: float
+    similar_ratio: float
+    margin: float
+    display_interval: int
+    mad_threshold: float
+    exp_method: Literal['distance_mm1', 'approximation_loose']
+    exp_lambda_1: float
+    mlp_retrain: int
+    mlp_hidden: str
+    mlp_batch_size: int
+    mlp_lr: float
+    mlp_epochs: int
+    mlp_dropout: float
+    newfamily_label: int
+    tree: int
+    rf_retrain: int
+
+
+def parse_args() -> SimConfig:
     """Parse the command line configuration for a particular run.
 
     Raises:
         ValueError: if the tree value for RandomForest is negative.
 
     Returns:
-        argparse.Namespace -- a set of parsed arguments.
+        SimConfig -- a typed dataclass containing the parsed arguments.
     """
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    p.add_argument('--data', help='The dataset to use.')
+    p.add_argument('--data', required=True, help='The dataset to use.')
 
     # classifier
     p.add_argument(
@@ -50,149 +83,117 @@ def parse_args() -> argparse.Namespace:
         choices=['mlp', 'rf'],
         help='The target classifier to use.',
     )
-    # arguments for which experiment to run
+
+    # experiment stages
     p.add_argument(
         '--stage',
         default='detect',
         choices=['detect', 'explanation'],
-        help='Whether stage to run. "detect" only includes detecting drifting samples, \
-                          while "explanation" includes both detection and explanation.',
+        help='Stage to run: "detect" (only detection) or "explanation" (both).',
     )
     p.add_argument(
         '--pure-ae',
         default=0,
         type=int,
         choices=[0, 1],
-        help='whether to use the standard autoencoder (1) or contrastive autoencoder (0).',  # noqa: E501
+        help='Use standard autoencoder (1) or contrastive autoencoder (0).',
     )
     p.add_argument(
         '--quiet',
         default=1,
         type=int,
         choices=[0, 1],
-        help='whether to print the debugging logs.',
+        help='Whether to print the debugging logs.',
     )
 
-    # arguments for the Contrastive Autoencoder and drift detection (build on the samples of top 7 families for example)  # noqa: E501
+    # Contrastive Autoencoder / Drift Detection
     p.add_argument(
         '--cae-hidden',
-        help='The hidden layers of the giant autoencoder, example: "512-128-32", \
-                         which in drebin_new_7 would make the architecture as "1340-512-128-32-7"',  # noqa: E501
+        default='512-128-32',
+        help='Hidden layers of CAE (e.g., "512-128-32").',
     )
+    p.add_argument('--cae-batch-size', default=64, type=int, help='CAE batch size.')
     p.add_argument(
-        '--cae-batch-size',
-        default=64,
-        type=int,
-        help='Contrastive Autoencoder batch_size, '
-        'use bigger size for larger training set \
-                        (when training, one batch only has 64/2=32 samples, another 32 samples are used for comparison).',  # noqa: E501
+        '--cae-lr', default=0.001, type=float, help='CAE Adam learning rate.'
     )
+    p.add_argument('--cae-epochs', default=250, type=int, help='CAE training epochs.')
     p.add_argument(
-        '--cae-lr',
-        default=0.001,
-        type=float,
-        help='Contrastive Autoencoder Adam learning rate.',
-    )
-    p.add_argument(
-        '--cae-epochs', default=250, type=int, help='Contrastive Autoencoder epochs.'
-    )
-    p.add_argument(
-        '--cae-lambda-1',
-        default=1e-1,
-        type=float,
-        help='lambda_1 in the loss function of contrastive autoencoder.',
+        '--cae-lambda-1', default=1e-1, type=float, help='CAE loss function lambda_1.'
     )
     p.add_argument(
         '--similar-ratio',
         default=0.25,
         type=float,
-        help='Ratio of similar samples in a batch when training contrastive autoencoder.',  # noqa: E501
+        help='Ratio of similar samples in CAE batch.',
     )
     p.add_argument(
-        '--margin',
-        default=10.0,
-        type=float,
-        help='Maximum margins of dissimilar samples when training contrastive autoencoder.',  # noqa: E501
+        '--margin', default=10.0, type=float, help='Max margins for dissimilar samples.'
     )
     p.add_argument(
         '--display-interval',
         default=10,
         type=int,
-        help='Show logs about loss and other information every xxx epochs when training contrastive autoencoder.',  # noqa: E501
+        help='Log frequency during CAE training.',
     )
-
     p.add_argument(
         '--mad-threshold',
         default=3.5,
         type=float,
-        help='The threshold for MAD outlier detection, choose one from 2, 2.5, 3 or 3.5',  # noqa: E501
+        help='Threshold for MAD outlier detection.',
     )
 
-    # arguments for explaining a drift sample
+    # Explanation module
     p.add_argument(
         '--exp-method',
         default='distance_mm1',
         choices=['distance_mm1', 'approximation_loose'],
-        help='which explanation method to use. "distance_mm1" is our method, \
-                          while "approximation_loose" is a baseline method',
+        help='Explanation method: our method or baseline.',
     )
     p.add_argument(
         '--exp-lambda-1',
         default=1e-3,
         type=float,
-        help='lambda_1 in the loss function of explanation.',
+        help='lambda_1 for explanation loss.',
     )
 
-    # sub-arguments for the MLP classifier.
+    # MLP sub-arguments
     p.add_argument(
         '--mlp-retrain',
-        type=int,
-        choices=[0, 1],
-        help='Whether to retrain the MLP classifier.',
-    )
-    p.add_argument(
-        '--mlp-hidden',
-        help='The hidden layers of the MLP classifier, example: "100-30", which in drebin_new_7 case would make the architecture as 1340-100-30-7',  # noqa: E501
-    )
-    p.add_argument(
-        '--mlp-batch-size', default=32, type=int, help='MLP classifier batch_size.'
-    )
-    p.add_argument(
-        '--mlp-lr', default=0.001, type=float, help='MLP classifier Adam learning rate.'
-    )
-    p.add_argument('--mlp-epochs', default=50, type=int, help='MLP classifier epochs.')
-    p.add_argument(
-        '--mlp-dropout', default=0.2, type=float, help='MLP classifier Droput rate.'
-    )
-
-    # sub-arguments for the drebin new family data
-    p.add_argument(
-        '--newfamily-label',
-        type=int,
-        help='specify which label should be used as the new family in the testing set.',
-    )
-
-    # sub-arguments for the RandomForest classifier. [Deprecated]
-    p.add_argument(
-        '--tree',
-        type=int,
-        default=100,
-        help='The n_estimators of RandomForest classifier when --classifier = "rf"',
-    )
-    p.add_argument(
-        '--rf-retrain',
         default=0,
         type=int,
         choices=[0, 1],
-        help='Whether to retrain the RandomForest classifier.',
+        help='Retrain the MLP classifier.',
+    )
+    p.add_argument(
+        '--mlp-hidden', default='100-30', help='MLP hidden layers (e.g., "100-30").'
+    )
+    p.add_argument('--mlp-batch-size', default=32, type=int, help='MLP batch size.')
+    p.add_argument(
+        '--mlp-lr', default=0.001, type=float, help='MLP Adam learning rate.'
+    )
+    p.add_argument('--mlp-epochs', default=50, type=int, help='MLP epochs.')
+    p.add_argument('--mlp-dropout', default=0.2, type=float, help='MLP dropout rate.')
+
+    # Data specific
+    p.add_argument(
+        '--newfamily-label',
+        default=7,
+        type=int,
+        help='Label used for new family in testing.',
+    )
+
+    # RandomForest [Deprecated]
+    p.add_argument('--tree', type=int, default=100, help='n_estimators for RF.')
+    p.add_argument(
+        '--rf-retrain', default=0, type=int, choices=[0, 1], help='Retrain RF.'
     )
 
     args = p.parse_args()
 
     if args.tree < 0:
-        raise ValueError('invalid tree value')
+        raise ValueError('Tree value for Random Forest cannot be negative.')
 
-    return args
+    return SimConfig(**vars(args))
 
 
 def get_model_dims(

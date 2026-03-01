@@ -10,7 +10,6 @@ testing drift to build a loose approximation model (does not really reflect the 
 
 """  # noqa: E501
 
-import argparse
 import logging
 import os
 import random
@@ -28,6 +27,7 @@ from numpy.random import seed
 from sklearn.metrics import accuracy_score, pairwise_distances
 from tensorflow import set_random_seed
 from tqdm import tqdm
+from utils import SimConfig
 
 import cade.classifier as classifier
 import cade.mask_exp_by_approximation as mask_exp
@@ -48,13 +48,39 @@ def explain_drift_samples_per_instance(
     y_train: np.ndarray,
     x_test: np.ndarray,
     _y_test: np.ndarray,
-    args: argparse.Namespace,
+    config: SimConfig,
     one_by_one_check_result_path: str,
     training_info_for_detect_path: str,
     cae_weights_path: str,
     saved_exp_classifier_folder: str,
     mask_file_path: str,
 ) -> None:
+    """
+    Orchestrate the instance-level explanation process for all detected drift samples.
+
+    This function executes the full explanation pipeline:
+    1. Identifies samples flagged as drift from previous detection results.
+    2. Projects test drift samples into latent space using a pre-trained CAE encoder.
+    3. Builds or loads surrogate 'global' models for each historical family involved.
+    4. Iterates through each drift instance to generate a feature importance mask
+       that explains the deviation from its closest known family.
+    5. Saves the resulting masks into a compressed .npz file.
+
+    Args:
+        x_train: Training feature vectors (raw input space).
+        y_train: Ground truth labels for training data.
+        x_test: Testing feature vectors (raw input space).
+        _y_test: Ground truth labels for testing data (unused, prefixed with underscore).
+        config: SimConfig containing hyperparameters (mad_threshold, cae_hidden, exp_lambda_1).
+        one_by_one_check_result_path: Path to the CSV containing drift detection results.
+        training_info_for_detect_path: Path to the .npz file containing training distribution stats.
+        cae_weights_path: Path to the pre-trained weights for the Contrastive Autoencoder.
+        saved_exp_classifier_folder: Directory to store/load surrogate MLP models.
+        mask_file_path: Output path where the final explanation masks will be saved.
+
+    Returns:
+        None. Results are written to the file system at mask_file_path.
+    """  # noqa: E501
     if os.path.exists(mask_file_path):
         logging.info(
             f'explanation result file {mask_file_path} exists, no need to run explanation module'  # noqa: E501
@@ -64,10 +90,10 @@ def explain_drift_samples_per_instance(
         get_drift_samples_to_explain(one_by_one_check_result_path)
     )
 
-    mad_threshold: float = args.mad_threshold
+    mad_threshold: float = config.mad_threshold
 
     cae_dims = utils.get_model_dims(
-        'Contrastive AE', x_train.shape[1], args.cae_hidden, len(np.unique(y_train))
+        'Contrastive AE', x_train.shape[1], config.cae_hidden, len(np.unique(y_train))
     )
 
     # load CAE encoder
@@ -119,7 +145,7 @@ def explain_drift_samples_per_instance(
             diff_idx = np.where(diff != 0)[0]
 
             mask = explain_instance(
-                x_target, args.exp_lambda_1, diff_idx, final_model_path
+                x_target, config.exp_lambda_1, diff_idx, final_model_path
             )
             masks.append(mask)
             logging.debug('[explanation] explain single instance finished...')

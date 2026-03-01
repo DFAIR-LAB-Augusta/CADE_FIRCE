@@ -97,8 +97,7 @@ def report_classification_results_helper(
         y_new_pred = clf_model.predict(x_new)
         y_new_prob = np.max(clf_model.predict_proba(x_new), axis=1)
     else:
-        logging.error(
-            f'saved model name {model_path} is neither h5 or pkl format')
+        logging.error(f'saved model name {model_path} is neither h5 or pkl format')
         sys.exit(-1)
 
     utils.create_parent_folder(report_file_path)
@@ -107,11 +106,9 @@ def report_classification_results_helper(
         for idx, real_label in tqdm(enumerate(y_new), desc='MLP classified'):
             if only_wrongly_samples:
                 if y_new_pred[idx] != real_label:
-                    f.write(
-                        f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
+                    f.write(f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
             else:
-                f.write(
-                    f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
+                f.write(f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
     if only_wrongly_samples:
         logging.info('Reported wrongly classified samples.')
     else:
@@ -132,8 +129,7 @@ def combine_classify_and_detect_result(
         combined_report_path: Destination path for the merged CSV.
     """
     if os.path.exists(combined_report_path):
-        logging.info(
-            f'Report already exists at {combined_report_path}. Skipping.')
+        logging.info(f'Report already exists at {combined_report_path}. Skipping.')
         return
 
     header = 'sample_idx,real_label,pred_label,closest_label,is_drift,pred_prob,min_distance,min_anomaly_score\n'  # noqa: E501
@@ -173,6 +169,28 @@ def evaluate_newfamily_as_drift_by_distance(
     dist_effort_pr_value_fig_path: str,
     dist_one_by_one_check_result_path: str,
 ) -> None:
+    """
+    Evaluate drift detection performance by analyzing distances of new family samples.
+
+    This function parses a combined report to identify samples exceeding the MAD
+    threshold, ranks them by distance to their closest training centroids, and
+    calculates classification accuracy. It specifically handles label mapping for
+    Drebin and IDS datasets and generates both a sorted result CSV and a PR curve plot.
+
+    Args:
+        dataset_name: Name of the dataset (used to determine target drift labels).
+        newfamily: The default integer label for the drifting family.
+        combined_report_path: Path to the CSV containing merged classification
+            and detection metrics.
+        mad_threshold: The anomaly score threshold used to filter potential drift.
+        save_ordered_dis_path: Destination path for the CSV of samples ranked
+            by distance.
+        dist_effort_pr_value_fig_path: Destination path for the PR curve visualization.
+        dist_one_by_one_check_result_path: Path for the final text-based summary report.
+
+    Returns:
+        None. Generates file outputs and logs metrics.
+    """
     if 'drebin' in dataset_name:
         newfamily = (
             # since we adjust all the new family to label 7, no matter it is 0~7.
@@ -233,10 +251,8 @@ def evaluate_newfamily_as_drift_by_distance(
         acc_classifier, acc_closest, dist_one_by_one_check_result_path
     )
 
-    logging.debug(
-        f'use drift closest family as prediction accuracy:\n {acc_closest}')
-    logging.debug(
-        f'use drift closest family as prediction confusion matrix:\n {cm}')
+    logging.debug(f'use drift closest family as prediction accuracy:\n {acc_closest}')
+    logging.debug(f'use drift closest family as prediction confusion matrix:\n {cm}')
 
 
 def plot_inspection_effort_pr_value_by_dist(
@@ -312,8 +328,7 @@ def plot_inspection_effort_pr_value_by_dist(
     ax.set_title(
         'Precision Recall value as the change of inspection efforts', fontsize=12
     )
-    ax.set_xticks(np.around(np.linspace(
-        0, len(inspection_cnt_list), 10), decimals=0))
+    ax.set_xticks(np.around(np.linspace(0, len(inspection_cnt_list), 10), decimals=0))
     ax.set_xlabel('Inspection Effort (# of Samples)', fontsize=16)
     ax.set_ylabel('Rate', fontsize=16)
     ax.legend(loc='best')
