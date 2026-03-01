@@ -5,7 +5,7 @@ UV   ?= uv
 PY   ?= python
 RUFF ?= ruff
 
-TREE_IGNORE := .venv|.ruff_cache|.pytest_cache|.mypy_cache|__pycache__|*.pyc|.git|dist|build|*.egg-info|logs|datasets|reports|models|assets|.vscode|.idea
+TREE_IGNORE := .venv|.ruff_cache|.pytest_cache|.mypy_cache|__pycache__|*.pyc|.git|dist|build|*.egg-info|logs|datasets|reports|models|assets|.vscode|.idea|pure_ae_fig|fig|pure_ae_reports|data|.github
 
 .PHONY: help lock sync sync-prod sync-tf sync-all \
         run test test-cov lint fmt style \
@@ -70,9 +70,6 @@ tree: ## Print repo tree (ignoring common dirs)
 
 build: ## Build sdist/wheel
 	$(UV) build
-
-clean: ## Remove build artifacts
-	rm -rf dist build *.egg-info
 	
 preflight: ## Build + run twine metadata checks
 	$(UV) build
