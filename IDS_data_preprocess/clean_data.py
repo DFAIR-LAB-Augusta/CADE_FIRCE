@@ -71,8 +71,8 @@ def clean_single_file(filename: str, *, is_specific: bool = False) -> None:
 
     Args:
         filename: The absolute or relative path to the input CSV file.
-        is_specific: A keyword-only boolean flag. If True, skips the first 4 
-            columns to accommodate specific non-standard data formats 
+        is_specific: A keyword-only boolean flag. If True, skips the first 4
+            columns to accommodate specific non-standard data formats
             (e.g., the 02_20_2018 file).
 
     Returns:
@@ -94,8 +94,7 @@ def clean_single_file(filename: str, *, is_specific: bool = False) -> None:
     """remove traffic with NaN and Infinity values, read the file content into a numpy array."""  # noqa: E501
     with open(filename) as f:
         date_str = (
-            filename.replace('.csv', '').replace(
-                '_', '/').replace(RAW_DATA_PATH, '')
+            filename.replace('.csv', '').replace('_', '/').replace(RAW_DATA_PATH, '')
         )
         date_str = date_str[3:5] + '/' + date_str[0:2] + date_str[5:]
         print(f'date_str: {date_str}')
@@ -123,14 +122,15 @@ def clean_single_file(filename: str, *, is_specific: bool = False) -> None:
                     continue
                 # convert datetime to UNIX timestamp
                 line[2] = str(
-                    datetime.strptime(line[2], '%d/%m/%Y %H:%M:%S')
+                    datetime
+                    .strptime(line[2], '%d/%m/%Y %H:%M:%S')
                     .replace(tzinfo=UTC)
                     .timestamp()
                 )
                 traffics.append(line)
             except (ValueError, IndexError) as e:
                 # These are "expected" data quality issues
-                print(f"Skipping malformed data at {filename} line {idx}: {e}")
+                print(f'Skipping malformed data at {filename} line {idx}: {e}')
                 continue
             except Exception:
                 # This catches unexpected logic errors but allows KeyboardInterrupt
@@ -139,14 +139,11 @@ def clean_single_file(filename: str, *, is_specific: bool = False) -> None:
     print('===================\n')
     print(f'total # traffic is {len(contents)}')
     print(f'traffic that has NaN values: {traffic_contain_null_count}')
-    print(
-        f'traffic that has Infinity values: {traffic_contain_infinity_count}')
-    print(
-        f'traffic that has invalid timestamp: {traffic_invalid_timestamp_count}')
+    print(f'traffic that has Infinity values: {traffic_contain_infinity_count}')
+    print(f'traffic that has invalid timestamp: {traffic_invalid_timestamp_count}')
 
     traffics = np.array(traffics)
-    print(
-        f'after removing NaN, Infinity, and invalid, traffic shape: {traffics.shape}')
+    print(f'after removing NaN, Infinity, and invalid, traffic shape: {traffics.shape}')
 
     """remove duplicate traffics and save feature vectors, assigned labels, semantic labels to a compressed file."""  # noqa: E501
     # np.unique will sort instead of keeping the original order.
@@ -161,8 +158,7 @@ def clean_single_file(filename: str, *, is_specific: bool = False) -> None:
 
     y = np.array([TRAFFIC_LABEL[name] for name in y_name])
     base_filename = os.path.basename(filename)
-    save_file_path = os.path.join(
-        SAVE_PATH, base_filename.replace('csv', 'npz'))
+    save_file_path = os.path.join(SAVE_PATH, base_filename.replace('csv', 'npz'))
 
     np.savez_compressed(save_file_path, X=x, y=y, y_name=y_name)
     print(f'sorted traffics shape: {x.shape}')

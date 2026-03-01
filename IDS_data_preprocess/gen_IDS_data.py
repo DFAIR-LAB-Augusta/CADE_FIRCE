@@ -92,13 +92,11 @@ def main() -> None:
     saved_unnormalized_path = os.path.join(
         UNNORMALIZED_SAVE_FOLDER, f'{config.name}_unnormalized.npz'
     )
-    x_train, x_test, y_train, y_test = split_data(
-        config, saved_unnormalized_path)
+    x_train, x_test, y_train, y_test = split_data(config, saved_unnormalized_path)
 
     """ normalize train, test and save them to file. """
     save_path = os.path.join(SAVE_FOLDER, f'{config.name}.npz')
-    normalize(x_train, x_test, y_train, y_test,
-              config.sampling_ratio, save_path)
+    normalize(x_train, x_test, y_train, y_test, config.sampling_ratio, save_path)
 
 
 def parse_args() -> RunConfig:
@@ -113,8 +111,7 @@ def parse_args() -> RunConfig:
     p.add_argument(
         '--name', help='The name of the generated dataset would be as name.npz.'
     )
-    p.add_argument(
-        '--benign', help='Specify which day of benign data will be used.')
+    p.add_argument('--benign', help='Specify which day of benign data will be used.')
     p.add_argument(
         '--mal',
         help='The date and type of malicious traffic for training/testing. '
@@ -176,8 +173,7 @@ def split_data(
 
     # 1. Validation
     if config.mal is None or config.new_mal is None or config.benign is None:
-        raise ValueError(
-            '`mal`, `new_mal`, and `benign` args must all be set.')
+        raise ValueError('`mal`, `new_mal`, and `benign` args must all be set.')
 
     # 2. Extract Data Categories
     seen_mal_dict = get_needed_file_types_dict(config.mal)
@@ -196,8 +192,7 @@ def split_data(
         all_seen_data.append(extract_data_by_category(day, cat))
 
     for x_cat, y_cat in all_seen_data:
-        xt, xv, yt, yv = train_test_split(
-            x_cat, y_cat, test_size=0.2, shuffle=False)
+        xt, xv, yt, yv = train_test_split(x_cat, y_cat, test_size=0.2, shuffle=False)
         x_train_list.append(xt)
         x_test_list.append(xv)
         y_train_list.append(yt)
@@ -381,8 +376,7 @@ def normalize(
 
     # 6. Combine Training Data
     # Pylance is happy here because all inputs are confirmed as np.ndarray
-    x_old = np.concatenate(
-        [train_ports_enc, train_protos_enc, x_train_scale], axis=1)
+    x_old = np.concatenate([train_ports_enc, train_protos_enc, x_train_scale], axis=1)
     y_old = y_train.astype('int32')
 
     # 7. Transform Test Data
@@ -399,8 +393,7 @@ def normalize(
     x_test_scale = scaler.transform(x_test[:, 2:])
 
     # 8. Combine Testing Data
-    x_new = np.concatenate(
-        [test_ports_enc, test_protos_enc, x_test_scale], axis=1)
+    x_new = np.concatenate([test_ports_enc, test_protos_enc, x_test_scale], axis=1)
     y_new = y_test.astype('int32')
 
     # 9. Save and Report
@@ -447,8 +440,7 @@ def downsampling(
         if sample_size == 0:
             continue
 
-        filter_idx = np.random.choice(
-            family_indices, size=sample_size, replace=False)
+        filter_idx = np.random.choice(family_indices, size=sample_size, replace=False)
 
         x_collect.append(x_train[filter_idx])
         y_collect.append(y_train[filter_idx])
