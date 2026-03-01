@@ -1,6 +1,6 @@
 #### use our distance-based method as the explanation #######
 mkdir -p logs/drebin_new_7/ &&                              \
-nohup python -u main.py 	                                \
+nohup uv run cade-main	                                    \
             --data drebin_new_7                             \
             --newfamily-label 7                             \
             -c mlp                                          \

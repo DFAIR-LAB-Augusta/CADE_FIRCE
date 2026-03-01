@@ -1,6 +1,6 @@
 ####### use Infiltration as the unseen family #######
 mkdir -p logs/IDS_new_Infilteration/ &&                     \
-nohup python -u main.py 	                                \
+nohup uv run cade-main  	                                \
             --data IDS_new_Infilteration                    \
             --newfamily-label 3                             \
             -c mlp                                          \
@@ -17,12 +17,13 @@ nohup python -u main.py 	                                \
             --similar-ratio 0.25                            \
             --margin 10.0                                   \
             --display-interval 1                            \
-            --mad-threshold 3.5                             \
-            > logs/IDS_new_Infilteration/mlp_$(date "+%m.%d-%H.%M.%S")_cae_lambda_1e-1.log &
+            --mad-threshold 0                               \
+            --pure-ae 1                                     \
+            > logs/IDS_new_Infilteration/mlp_$(date "+%m.%d-%H.%M.%S").log &
 
 ###### use DoS-Hulk as the unseen family #######
 mkdir -p logs/IDS_new_Hulk/ &&                              \
-nohup python -u main.py 	                                \
+nohup uv run cade-main  	                                \
             --data IDS_new_Hulk                             \
             --newfamily-label 2                             \
             -c mlp                                          \
@@ -39,12 +40,13 @@ nohup python -u main.py 	                                \
             --similar-ratio 0.25                            \
             --margin 10.0                                   \
             --display-interval 1                            \
-            --mad-threshold 3.5                             \
-            > logs/IDS_new_Hulk/mlp_$(date "+%m.%d-%H.%M.%S")_cae_lambda_1e-1.log &
+            --mad-threshold 0                               \
+            --pure-ae 1                                     \
+            > logs/IDS_new_Hulk/mlp_$(date "+%m.%d-%H.%M.%S").log &
 
 ####### use SSH-Bruteforce as the unseen family #######
 mkdir -p logs/IDS_new_SSH/ &&                               \
-nohup python -u main.py 	                                \
+nohup uv run cade-main  	                                \
             --data IDS_new_SSH                              \
             --newfamily-label 1                             \
             -c mlp                                          \
@@ -61,5 +63,6 @@ nohup python -u main.py 	                                \
             --similar-ratio 0.25                            \
             --margin 10.0                                   \
             --display-interval 1                            \
-            --mad-threshold 3.5                             \
-            > logs/IDS_new_SSH/mlp_$(date "+%m.%d-%H.%M.%S")_cae_lambda_1e-1.log &
+            --mad-threshold 0                               \
+            --pure-ae 1                                     \
+            > logs/IDS_new_SSH/mlp_$(date "+%m.%d-%H.%M.%S").log &
