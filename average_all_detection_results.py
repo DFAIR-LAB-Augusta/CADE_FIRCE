@@ -18,6 +18,35 @@ def main(
     mad: float,
     cae_lambda: float,
 ) -> None:
+    """
+    Aggregates and reports drift detection performance across multiple malware families.
+
+    This function iterates through the results of individual family drift experiments,
+    extracts metrics using regular expressions, calculates the mean and standard
+    deviation across all families, and saves a summary report. It specifically
+    handles logic differences between the 'drebin' (Android malware) and
+    'IDS' (Intrusion Detection) datasets.
+
+    Args:
+        dataset: The dataset name, either 'drebin' or 'IDS'.
+        use_pure_ae: Flag (1/0) indicating if a Pure Autoencoder was used
+            instead of a Contractive Autoencoder (CAE).
+        families_cnt: Total number of families to iterate through.
+        last_label: The integer label representing the 'new' or 'drifting'
+            family in the classification task.
+        margin: The margin hyperparameter used during the distance-based check.
+        mad: The Median Absolute Deviation scaling factor used in evaluation.
+        cae_lambda: The regularization lambda used for the CAE.
+
+    Returns:
+        None. Outputs results to the console and writes a detailed summary
+        to a text file in the designated report directory.
+
+    Raises:
+        FileNotFoundError: If the expected result CSVs are missing for any family.
+        IndexError: If the regex patterns (p1-p4) fail to find a match in the
+            report files.
+    """
     report_dir = 'reports' if use_pure_ae == 0 else 'pure_ae_reports'
 
     families = range(families_cnt) if dataset == 'drebin' else range(1, families_cnt)
