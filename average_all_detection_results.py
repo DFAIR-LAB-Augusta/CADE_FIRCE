@@ -2,6 +2,7 @@ import os
 import re
 import sys
 from collections import Counter
+from typing import Literal
 
 import numpy as np
 
@@ -9,15 +10,20 @@ import cade.data as data
 
 
 def main(
-    dataset, use_pure_ae, families_cnt, last_label, margin, mad, cae_lambda
+    dataset: Literal['drebin', 'IDS'],
+    use_pure_ae: int,
+    families_cnt: Literal[8, 4],
+    last_label: Literal[7, 3],
+    margin: float,
+    mad: float,
+    cae_lambda: float,
 ) -> None:
-    REPORT_FOLDER = 'reports' if use_pure_ae == 0 else 'pure_ae_reports'
+    report_dir = 'reports' if use_pure_ae == 0 else 'pure_ae_reports'
 
-    if dataset == 'drebin':
-        families = range(families_cnt)
-    else:
-        families = range(1, families_cnt)
-        name_dict = {1: 'SSH', 2: 'Hulk', 3: 'Infilteration'}
+    families = range(families_cnt) if dataset == 'drebin' else range(1, families_cnt)
+
+    # Only used by IDS, outside to prevent unbound errors
+    name_dict = {1: 'SSH', 2: 'Hulk', 3: 'Infilteration'}
 
     p1 = re.compile(r'precision: \d+\.\d+')
     p2 = re.compile(r'recall: \d+\.\d+')
@@ -37,13 +43,13 @@ def main(
             single_dataset = f'IDS_new_{name_dict[i]}'
             name = name_dict[i]
 
-        _X_train, _y_train, _X_test, y_test = data.load_features(single_dataset, i)
+        _x_train, _y_train, _x_test, y_test = data.load_features(single_dataset, i)
 
         total_new_family = len(np.where(y_test == last_label)[0])
 
         """record results for each family"""
         result_path = os.path.join(
-            f'{REPORT_FOLDER}',
+            f'{report_dir}',
             single_dataset,
             f'dist_mlp_one_by_one_check_pr_value_m{margin}_mad{mad}_lambda{cae_lambda}.csv',
         )
@@ -56,7 +62,7 @@ def main(
             re.findall(p4, content)[0].replace('best inspection count: ', '')
         )
         print(
-            f'family {name}: precision: {precision * 100}%, recall: {recall * 100}%, f1: {f1 * 100}%, inspect: {inspect_cnt}'
+            f'family {name}: precision: {precision * 100}%, recall: {recall * 100}%, f1: {f1 * 100}%, inspect: {inspect_cnt}'  # noqa: E501
         )
         precision_list.append(precision)
         recall_list.append(recall)
@@ -64,7 +70,7 @@ def main(
         inspect_cnt_list.append(inspect_cnt)
         normalized_inspect_cnt_list.append(inspect_cnt / total_new_family)
 
-        # check the involved families in the drifting samples when we get the best results
+        # check the involved families in the drifting samples when we get the best results  # noqa: E501
         involved_families = []
         with open(result_path) as f:
             next(f)
@@ -79,12 +85,12 @@ def main(
     print('============================================')
     print('avg +/- std (final result in Table 3): ')
     print(
-        f'precision: {np.average(precision_list) * 100:.2f}% +/- {np.std(precision_list):.2f}'
+        f'precision: {np.average(precision_list) * 100:.2f}% +/- {np.std(precision_list):.2f}'  # noqa: E501
     )
     print(f'recall: {np.average(recall_list) * 100:.2f}% +/- {np.std(recall_list):.2f}')
     print(f'f1: {np.average(f1_list) * 100:.2f}% +/- {np.std(f1_list):.2f}')
     print(
-        f'inspect_cnt: {np.average(inspect_cnt_list):.2f} +/- {np.std(inspect_cnt_list):.2f}'
+        f'inspect_cnt: {np.average(inspect_cnt_list):.2f} +/- {np.std(inspect_cnt_list):.2f}'  # noqa: E501
     )
     print(
         f'normalized inspect_cnt: {np.average(normalized_inspect_cnt_list):.2f} '
@@ -92,7 +98,7 @@ def main(
     )
     print('============================================')
 
-    saved_report_folder = f'{REPORT_FOLDER}/average_{dataset}'
+    saved_report_folder = f'{report_dir}/average_{dataset}'
     os.makedirs(saved_report_folder, exist_ok=True)
     with open(
         f'{saved_report_folder}/average_{dataset}_result_margin{margin}_mad{mad}_lambda{cae_lambda}.txt',
@@ -109,14 +115,14 @@ def main(
         f.write('============================================\n')
         f.write('avg +/- std (final result in Table 3): \n')
         f.write(
-            f'precision: {np.average(precision_list) * 100:.2f}% +/- {np.std(precision_list):.2f}\n'
+            f'precision: {np.average(precision_list) * 100:.2f}% +/- {np.std(precision_list):.2f}\n'  # noqa: E501
         )
         f.write(
-            f'recall: {np.average(recall_list) * 100:.2f}% +/- {np.std(recall_list):.2f}\n'
+            f'recall: {np.average(recall_list) * 100:.2f}% +/- {np.std(recall_list):.2f}\n'  # noqa: E501
         )
         f.write(f'f1: {np.average(f1_list) * 100:.2f}% +/- {np.std(f1_list):.2f} \n')
         f.write(
-            f'inspect_cnt: {np.average(inspect_cnt_list):.2f} +/- {np.std(inspect_cnt_list):.2f}\n'
+            f'inspect_cnt: {np.average(inspect_cnt_list):.2f} +/- {np.std(inspect_cnt_list):.2f}\n'  # noqa: E501
         )
         f.write(
             f'normalized inspect_cnt: {np.average(normalized_inspect_cnt_list):.2f} '
@@ -127,7 +133,7 @@ def main(
         for i in range(len(involved_families_list)):
             name = i if dataset == 'drebin' else name_dict[i + 1]
             f.write(
-                f'family {name}:\t families detected as drifting: {Counter(involved_families_list[i])}\n'
+                f'family {name}:\t families detected as drifting: {Counter(involved_families_list[i])}\n'  # noqa: E501
             )
 
 
@@ -135,7 +141,7 @@ if __name__ == '__main__':
     if len(sys.argv) != 3:
         print(
             'usage: "python -u average_all_detection_results.py drebin 0", '
-            'where 0 for CADE, 1 for vanilla autoencoder. You may also specify to use drebin or IDS.'
+            'where 0 for CADE, 1 for vanilla autoencoder. You may also specify to use drebin or IDS.'  # noqa: E501
         )
         sys.exit(-1)
 
