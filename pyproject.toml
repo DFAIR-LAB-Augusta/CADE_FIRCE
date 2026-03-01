@@ -1,6 +1,14 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# This is crucial for the 'src' layout
+packages = ["src/cade"]
+
 [project]
 name = "cade-firce"
-version = "0.1.0"
+version = "0.2.0"
 description = "CADE (modernized) for integration into FIRCE"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -31,7 +39,8 @@ tf = [
 ]
 
 # If you later want separate “extras” for prod GPU vs CPU, uv supports extras + sources/indexes,
-# but this basic split is usually enough for M1 dev vs Linux GPU. :contentReference[oaicite:3]{index=3}
+# but this basic split is usually enough for M1 dev vs Linux GPU.
+
 
 [dependency-groups]
 dev = [
@@ -42,13 +51,11 @@ dev = [
   "pre-commit>=3.7",
 ]
 
-[build-system]
-requires = ["hatchling>=1.24"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["cade"]
+[project.scripts]
+cade-main = "cade.main:main"
+cade-clean = "scripts.data_prep.clean_data:main" # requires adding a main() to clean_data
 
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+pythonpath = ["src"]

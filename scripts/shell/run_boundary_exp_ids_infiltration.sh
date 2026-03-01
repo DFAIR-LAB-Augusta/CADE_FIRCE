@@ -1,6 +1,6 @@
 #### use boundary-based method as the explanation #######
 mkdir -p logs/IDS_new_Infilteration/ &&                     \
-nohup python -u main.py 	                                \
+nohup uv run cade-main  	                                \
             --data IDS_new_Infilteration                    \
             --newfamily-label 3                             \
             -c mlp                                          \

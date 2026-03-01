@@ -1,6 +1,6 @@
-#### use family 7 as the unseen family #######
-mkdir -p logs/drebin_new_7/ &&                              \
-nohup python -u main.py 	                                \
+###### use family 7 as the unseen family #######
+mkdir -p logs/pure_ae/drebin_new_7/ &&                      \
+nohup uv run cade-main 	                                    \
             --data drebin_new_7                             \
             --newfamily-label 7                             \
             -c mlp                                          \
@@ -17,12 +17,13 @@ nohup python -u main.py 	                                \
             --similar-ratio 0.25                            \
             --margin 10.0                                   \
             --display-interval 10                           \
-            --mad-threshold 3.5                             \
-            > logs/drebin_new_7/mlp_$(date "+%m.%d-%H.%M.%S")_cae_lambda_1e-1.log &
+            --mad-threshold 0                               \
+            --pure-ae 1                                     \
+            > logs/pure_ae/drebin_new_7/mlp_$(date "+%m.%d-%H.%M.%S").log &
 
 ####### use family 6 as the unseen family #######
-mkdir -p logs/drebin_new_6/ &&                              \
-nohup python -u main.py 	                                \
+mkdir -p logs/pure_ae/drebin_new_6/ &&                      \
+nohup uv run cade-main  	                                \
             --data drebin_new_6                             \
             --newfamily-label 6                             \
             -c mlp                                          \
@@ -39,12 +40,13 @@ nohup python -u main.py 	                                \
             --similar-ratio 0.25                            \
             --margin 10.0                                   \
             --display-interval 10                           \
-            --mad-threshold 3.5                             \
-            > logs/drebin_new_6/mlp_$(date "+%m.%d-%H.%M.%S")_cae_lambda_1e-1.log &
+            --mad-threshold 0                               \
+            --pure-ae 1                                     \
+            > logs/pure_ae/drebin_new_6/mlp_$(date "+%m.%d-%H.%M.%S").log &
 
 ####### use family 5 as the unseen family #######
-mkdir -p logs/drebin_new_5/ &&                              \
-nohup python -u main.py 	                                \
+mkdir -p logs/pure_ae/drebin_new_5/ &&                      \
+nohup uv run cade-main  	                                \
             --data drebin_new_5                             \
             --newfamily-label 5                             \
             -c mlp                                          \
@@ -61,12 +63,14 @@ nohup python -u main.py 	                                \
             --similar-ratio 0.25                            \
             --margin 10.0                                   \
             --display-interval 10                           \
-            --mad-threshold 3.5                             \
-            > logs/drebin_new_5/mlp_$(date "+%m.%d-%H.%M.%S")_cae_lambda_1e-1.log &
+            --mad-threshold 0                               \
+            --pure-ae 1                                     \
+            > logs/pure_ae/drebin_new_5/mlp_$(date "+%m.%d-%H.%M.%S").log &
+
 
 ###### use family 4 as the unseen family #######
-mkdir -p logs/drebin_new_4/ &&                              \
-nohup python -u main.py 	                                \
+mkdir -p logs/pure_ae/drebin_new_4/ &&                      \
+nohup uv run cade-main  	                                \
             --data drebin_new_4                             \
             --newfamily-label 4                             \
             -c mlp                                          \
@@ -83,12 +87,13 @@ nohup python -u main.py 	                                \
             --similar-ratio 0.25                            \
             --margin 10.0                                   \
             --display-interval 10                           \
-            --mad-threshold 3.5                             \
-            > logs/drebin_new_4/mlp_$(date "+%m.%d-%H.%M.%S")_cae_lambda_1e-1.log &
+            --mad-threshold 0                               \
+            --pure-ae 1                                     \
+            > logs/pure_ae/drebin_new_4/mlp_$(date "+%m.%d-%H.%M.%S").log &
 
 ####### use family 3 as the unseen family #######
-mkdir -p logs/drebin_new_3/ &&                              \
-nohup python -u main.py 	                                \
+mkdir -p logs/pure_ae/drebin_new_3/ &&                      \
+nohup uv run cade-main  	                                \
             --data drebin_new_3                             \
             --newfamily-label 3                             \
             -c mlp                                          \
@@ -105,12 +110,13 @@ nohup python -u main.py 	                                \
             --similar-ratio 0.25                            \
             --margin 10.0                                   \
             --display-interval 10                           \
-            --mad-threshold 3.5                             \
-            > logs/drebin_new_3/mlp_$(date "+%m.%d-%H.%M.%S")_cae_lambda_1e-1.log &
+            --mad-threshold 0                               \
+            --pure-ae 1                                     \
+            > logs/pure_ae/drebin_new_3/mlp_$(date "+%m.%d-%H.%M.%S").log &
 
 ####### use family 2 as the unseen family #######
-mkdir -p logs/drebin_new_2/ &&                              \
-nohup python -u main.py 	                                \
+mkdir -p logs/pure_ae/drebin_new_2/ &&                      \
+nohup uv run cade-main  	                                \
             --data drebin_new_2                             \
             --newfamily-label 2                             \
             -c mlp                                          \
@@ -127,12 +133,13 @@ nohup python -u main.py 	                                \
             --similar-ratio 0.25                            \
             --margin 10.0                                   \
             --display-interval 10                           \
-            --mad-threshold 3.5                             \
-            > logs/drebin_new_2/mlp_$(date "+%m.%d-%H.%M.%S")_cae_lambda_1e-1.log &
+            --mad-threshold 0                               \
+            --pure-ae 1                                     \
+            > logs/pure_ae/drebin_new_2/mlp_$(date "+%m.%d-%H.%M.%S").log &
 
 ####### use family 1 as the unseen family #######
-mkdir -p logs/drebin_new_1/ &&                              \
-nohup python -u main.py 	                                \
+mkdir -p logs/pure_ae/drebin_new_1/ &&                      \
+nohup uv run cade-main  	                                \
             --data drebin_new_1                             \
             --newfamily-label 1                             \
             -c mlp                                          \
@@ -149,12 +156,13 @@ nohup python -u main.py 	                                \
             --similar-ratio 0.25                            \
             --margin 10.0                                   \
             --display-interval 10                           \
-            --mad-threshold 3.5                             \
-            > logs/drebin_new_1/mlp_$(date "+%m.%d-%H.%M.%S")_cae_lambda_1e-1.log &
+            --mad-threshold 0                               \
+            --pure-ae 1                                     \
+            > logs/pure_ae/drebin_new_1/mlp_$(date "+%m.%d-%H.%M.%S").log &
 
 ####### use family 0 as the unseen family #######
-mkdir -p logs/drebin_new_0/ &&                              \
-nohup python -u main.py 	                                \
+mkdir -p logs/pure_ae/drebin_new_0/ &&                      \
+nohup uv run cade-main 	                                    \
             --data drebin_new_0                             \
             --newfamily-label 0                             \
             -c mlp                                          \
@@ -171,5 +179,6 @@ nohup python -u main.py 	                                \
             --similar-ratio 0.25                            \
             --margin 10.0                                   \
             --display-interval 10                           \
-            --mad-threshold 3.5                             \
-            > logs/drebin_new_0/mlp_$(date "+%m.%d-%H.%M.%S")_cae_lambda_1e-1.log &
+            --mad-threshold 0                               \
+            --pure-ae 1                                     \
+            > logs/pure_ae/drebin_new_0/mlp_$(date "+%m.%d-%H.%M.%S").log &
