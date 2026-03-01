@@ -22,7 +22,8 @@ import random
 import sys
 import traceback
 from timeit import default_timer as timer
-
+from typing import Any
+from keras.models import Model
 import numpy as np
 import tensorflow as tf
 from keras import backend as k
@@ -59,7 +60,41 @@ families = [
 RANDOM_TRY = 100
 
 
-def load_necessary_model_and_data(x_train, dataset, lambda_1, exp_method):
+def load_necessary_model_and_data(
+    x_train: np.ndarray,
+    dataset: str,
+    lambda_1: float,
+    exp_method: str,
+    new_label: int | None = None
+) -> tuple[np.ndarray | None, Model, list[str], list[int], str]:
+    """
+    Configure and load the Contrastive Autoencoder and associated metadata for explanation.
+
+    This function dynamically determines the model architecture (dimensions), weight paths, 
+    and feature definitions based on the dataset being analyzed. It also retrieves 
+    pre-computed masks if the explanation method requires approximation or distance-based 
+    metrics.
+
+
+
+    Args:
+        x_train: Training feature matrix, used to determine input dimensionality.
+        dataset: The name of the dataset (e.g., 'drebin', 'IDS', 'bluehex').
+        lambda_1: The balance factor used during training, used here for result lookups.
+        exp_method: The explanation method name (e.g., 'approximation', 'distance').
+        new_label: The integer index of the new/drift family (required for Drebin).
+
+    Returns:
+        A tuple containing:
+            * mask_list: Pre-computed explanation masks or None if not applicable.
+            * encoder_model: The Keras model representing the trained encoder.
+            * features: A list of feature names corresponding to the model input.
+            * cae_dims: The list of integers defining the autoencoder layer sizes.
+            * cae_weights_path: The file path string to the loaded .h5 weights.
+
+    Raises:
+        SystemExit: If the provided dataset name is not supported (exits with code -1).
+    """
     if 'drebin' in dataset:
         cae_dims = [x_train.shape[1], 512, 128, 32, 7]
         cae_weights_path = f'models/{dataset}/cae_{x_train.shape[1]}-512-128-32-7_lr0.0001_b64_e250_m10.0_lambda0.1_weights.h5'  # noqa: E501
@@ -73,7 +108,6 @@ def load_necessary_model_and_data(x_train, dataset, lambda_1, exp_method):
     elif 'bluehex' in dataset:
         cae_dims = [x_train.shape[1], 1024, 256, 64, 5]
         cae_weights_path = f'models/{dataset}/cae_1857-1024-256-64-5_lr0.0001_b256_e250_m10.0_weights.h5'  # noqa: E501
-        # setting 5 for option 6
         feature_file = '/home/liminyang/bluehex/cade_feature_names_setting5.txt'
     else:
         sys.exit(-1)
@@ -99,7 +133,39 @@ def load_necessary_model_and_data(x_train, dataset, lambda_1, exp_method):
     return mask_list, encoder_model, features, cae_dims, cae_weights_path
 
 
-def load_training_info(training_info_for_detect_path, closest_family):
+def load_training_info(
+    training_info_for_detect_path: str,
+    family: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+    """
+    Load pre-computed latent space representations and distance metrics for a specific family.
+
+    This function retrieves the statistical profile of a malware family from disk. 
+    It is used by the explanation module to compare drift samples against the 
+    known distribution of a training family.
+
+
+
+    Args:
+        training_info_for_detect_path: The directory containing the .npz files 
+            generated during the detection/training phase.
+        family: The integer label of the malware family to load.
+
+    Returns:
+        A tuple containing:
+            * z_train: Latent representations of all training samples in this family.
+            * z_closest_family: Latent representations of the most representative 
+              cluster (often used for visualization).
+            * centroid: The mathematical center (mean/median) of the family in latent space.
+            * dis_to_centroid: An array of Euclidean distances from each training 
+              sample to the `centroid`.
+            * mad: The Median Absolute Deviation of the distances, used for 
+              robust outlier thresholding.
+
+    Raises:
+        FileNotFoundError: If the .npz file for the specified family index 
+            does not exist in the path.
+    """  # noqa: E501
     info = np.load(training_info_for_detect_path)
     z_train = info['z_train']
     z_family = info['z_family']
@@ -107,10 +173,10 @@ def load_training_info(training_info_for_detect_path, closest_family):
     dis_family = info['dis_family']
     mad_family = info['mad_family']
 
-    z_closest_family = z_family[closest_family]
-    centroid = centroids[closest_family]
-    dis_to_centroid = dis_family[closest_family]
-    mad = mad_family[closest_family]
+    z_closest_family = z_family[family]
+    centroid = centroids[family]
+    dis_to_centroid = dis_family[family]
+    mad = mad_family[family]
 
     return z_train, z_closest_family, centroid, dis_to_centroid, mad
 
@@ -139,7 +205,8 @@ def get_important_fea_and_distance(
             important_feas_len_list = read_feas_len_from_file(
                 save_distance_mm1_important_fea_len_file
             )
-            print(f'load important_feas_len_list len: {len(important_feas_len_list)}')
+            print(
+                f'load important_feas_len_list len: {len(important_feas_len_list)}')
         else:
             logging.error(
                 'you need to perform distance_mm1 method to get the length of important features first'  # noqa: E501
@@ -152,7 +219,8 @@ def get_important_fea_and_distance(
     success = 0
 
     lowerbound_list = []
-    logging.debug(f'len(drift_samples_idx_list): {len(drift_samples_idx_list)}')
+    logging.debug(
+        f'len(drift_samples_idx_list): {len(drift_samples_idx_list)}')
 
     for idx, sample_idx, real, closest_family in tqdm(
         zip(
@@ -188,7 +256,8 @@ def get_important_fea_and_distance(
                 valid_n = len(np.where(prod > 0)[0])
                 valid_n = min(valid_n, important_feas_len_list[idx])
 
-                ranked_prod_idx = np.argsort(prod, kind='mergesort', axis=None)[::-1]
+                ranked_prod_idx = np.argsort(
+                    prod, kind='mergesort', axis=None)[::-1]
                 important_feas = ranked_prod_idx[: valid_n + 1]
             else:
                 logging.debug(f'drift-{idx}: mask is None')
@@ -276,13 +345,15 @@ def get_important_fea_and_distance(
     latent_x = encoder_model.predict(X_arr)
     latent_x_perturb = encoder_model.predict(X_perturb_arr)
     original_dis = np.sqrt(np.sum(np.square(latent_x - Centroid_arr), axis=1))
-    perturbed_dis = np.sqrt(np.sum(np.square(latent_x_perturb - Centroid_arr), axis=1))
+    perturbed_dis = np.sqrt(
+        np.sum(np.square(latent_x_perturb - Centroid_arr), axis=1))
 
     success_idx = np.where(perturbed_dis <= lowerbound_list)[0]
     success = len(success_idx)
 
     if exp_method == 'distance_mm1':
-        write_result_to_file(original_dis, 'original distance', save_result_path, 'w')
+        write_result_to_file(
+            original_dis, 'original distance', save_result_path, 'w')
         write_result_to_file(
             important_feas_len_list,
             f'{exp_method} important feas len',
@@ -304,15 +375,45 @@ def get_important_fea_and_distance(
         )
 
     with open(save_distance_mm1_important_fea_len_file, 'w') as f:
-        logging.debug(f'important_feas_len_list len: {len(important_feas_len_list)}')
+        logging.debug(
+            f'important_feas_len_list len: {len(important_feas_len_list)}')
         f.writelines(f'{fea_len}\n' for fea_len in important_feas_len_list)
 
 
 def preprocess_training_info(
-    X_train, y_train, drift_samples_closest, training_info_for_detect_path
-):
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    drift_samples_closest: list,
+    training_info_for_detect_path: str
+) -> tuple[dict[int, list[Any]], dict[int, np.ndarray], dict[int, np.ndarray]]:
+    """
+    Pre-calculate family statistics and reference samples for drift explanation.
+
+    This function aggregates training metadata for each family involved in the 
+    drift detection. It calculates the outlier 'lowerbound' using a Median Absolute 
+    Deviation (MAD) threshold and identifies the 'Medoid' (the sample closest 
+    to the cluster centroid) to serve as a reference point for local explanations.
+
+
+
+    Args:
+        x_train: The training feature matrix (binary vectors).
+        y_train: The labels for the training set.
+        drift_samples_closest: An array of labels representing the training families 
+            closest to each detected drift sample.
+        training_info_for_detect_path: Path to the directory containing 
+            pre-saved `.npz` files with latent space (Z) and distance metrics.
+
+    Returns:
+        A tuple containing three dictionaries:
+            * family_info_dict: Maps family label to [centroid, mad, lowerbound].
+            * x_train_family_dict: Maps family label to its corresponding 
+              subset of X_train.
+            * closest_sample_family_dict: Maps family label to the specific 
+              X_train sample closest to that family's centroid.
+    """
     family_info_dict = {}
-    X_train_family_dict = {}
+    x_train_family_dict = {}
     closest_sample_family_dict = {}
 
     # the load_training_info() is actually very time consuming, so just load it once for each closest family here.  # noqa: E501
@@ -321,15 +422,16 @@ def preprocess_training_info(
             load_training_info(training_info_for_detect_path, family)
         )
         lowerbound = mad * 3.5 + np.median(dis_to_centroid)
-        dis_to_centroid_inds = np.array(dis_to_centroid).argsort()  # distance ascending
-        X_train_family = X_train[np.where(y_train == family)[0]]
-        closest_to_centroid_sample = X_train_family[dis_to_centroid_inds][0]
+        dis_to_centroid_inds = np.array(
+            dis_to_centroid).argsort()
+        x_train_family = x_train[np.where(y_train == family)[0]]
+        closest_to_centroid_sample = x_train_family[dis_to_centroid_inds][0]
 
         family_info_dict[family] = [centroid, mad, lowerbound]
-        X_train_family_dict[family] = X_train_family
+        x_train_family_dict[family] = x_train_family
         closest_sample_family_dict[family] = closest_to_centroid_sample
 
-    return family_info_dict, X_train_family_dict, closest_sample_family_dict
+    return family_info_dict, x_train_family_dict, closest_sample_family_dict
 
 
 def write_result_to_file(single_list, name, filepath, mode) -> None:
@@ -362,7 +464,7 @@ def get_backpropagation_important_features(
     important_feas_len_list,
     save_result_path,
 ) -> None:
-    """G = d(f(x) - f(c)) / dx, sum G over rows (or maybe columns), then rank G to get the feature importance ranking"""  # noqa: E501
+    """G = d(f(x) - f(c)) / dx, sum G over rows ( or maybe columns), then rank G to get the feature importance ranking"""  # noqa: E501
     lowerbound_list = []
     s = timer()
 
@@ -403,7 +505,8 @@ def get_backpropagation_important_features(
             )
         )
         end = timer()
-        logging.debug(f'{idx} - backpropagation_gradients time: {(end - start):.3f}s')
+        logging.debug(
+            f'{idx} - backpropagation_gradients time: {(end - start):.3f}s')
 
         distance_method_important_feas_len = important_feas_len_list[idx]
 
@@ -416,7 +519,7 @@ def get_backpropagation_important_features(
                         x_new[i] = 1 if x[i] == 0 else 0
                         valid_n += 1
                 elif 'IDS' in dataset:
-                    """ use the sample (closest to centroid) feature value"""
+                    """ use the sample(closest to centroid) feature value"""
                     if original_importance[i] > 0:
                         closest_sample_family_dict[family][i]
                         valid_n += 1
@@ -428,11 +531,13 @@ def get_backpropagation_important_features(
             Centroid_arr = np.copy(family_info_dict[family][0])
         else:
             X_perturb_arr = np.vstack((X_perturb_arr, x_new))
-            Centroid_arr = np.vstack((Centroid_arr, family_info_dict[family][0]))
+            Centroid_arr = np.vstack(
+                (Centroid_arr, family_info_dict[family][0]))
 
     encoder_model.load_weights(cae_weights_path, by_name=True)
     latent_x_perturb = encoder_model.predict(X_perturb_arr)
-    perturbed_dis = np.sqrt(np.sum(np.square(latent_x_perturb - Centroid_arr), axis=1))
+    perturbed_dis = np.sqrt(
+        np.sum(np.square(latent_x_perturb - Centroid_arr), axis=1))
     success = len(np.where(perturbed_dis <= lowerbound_list)[0])
     write_result_to_file(
         perturbed_dis, 'gradient perturbed distance', save_result_path, 'a'
@@ -450,7 +555,8 @@ def get_backpropagation_important_features(
         )
 
     e = timer()
-    logging.debug(f'get_backpropagation_important_features time: {(e - s):.3f}s')
+    logging.debug(
+        f'get_backpropagation_important_features time: {(e - s):.3f}s')
 
 
 def backpropagation_gradients(
@@ -564,7 +670,8 @@ def eval_random_select_important_feas(
         )
 
         with open(save_result_path, 'a') as f:
-            total_try = len(random_dis_array_list) * len(random_dis_array_list[0])
+            total_try = len(random_dis_array_list) * \
+                len(random_dis_array_list[0])
             random_ratio = total_success_random / total_try
             print(
                 f'random success perturbed from drifting to in-dist: {random_ratio * 100:.2f}'  # noqa: E501
@@ -575,7 +682,8 @@ def eval_random_select_important_feas(
             )
 
         e = timer()
-        logging.debug(f'eval_random_select_important_feas: {(e - s):.3f} seconds')
+        logging.debug(
+            f'eval_random_select_important_feas: {(e - s):.3f} seconds')
 
     else:
         logging.error(
