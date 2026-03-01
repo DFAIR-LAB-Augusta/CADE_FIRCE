@@ -253,8 +253,6 @@ def get_important_fea_and_distance(  # noqa: C901
     x_arr = []
     centroid_arr = []
     x_perturb_arr = []
-    if mask_list is None:
-        mask_list = np.empty((1, 1))
 
     for idx, sample_idx, real, closest_family in tqdm(
         zip(
@@ -266,7 +264,7 @@ def get_important_fea_and_distance(  # noqa: C901
         total=len(drift_samples_idx_list),
     ):
         x = x_test[sample_idx]
-        mask = mask_list[idx]
+        mask = mask_list[idx] if mask_list is not None else None
 
         lowerbound = family_info_dict[closest_family][2]
 
@@ -283,8 +281,11 @@ def get_important_fea_and_distance(  # noqa: C901
             ))
 
         if 'approximation' in exp_method:
-            tmp = np.sum(mask)
-            if not np.isnan(tmp):
+            tmp = np.sum(mask) if mask is not None else None
+            if tmp is None or np.isnan(tmp):
+                logging.debug(f'drift-{idx}: mask is None')
+                important_feas = None
+            else:
                 prod = x * mask
                 np.sort(prod, kind='mergesort', axis=None)[::-1]
                 valid_n = len(np.where(prod > 0)[0])
@@ -292,9 +293,6 @@ def get_important_fea_and_distance(  # noqa: C901
 
                 ranked_prod_idx = np.argsort(prod, kind='mergesort', axis=None)[::-1]
                 important_feas = ranked_prod_idx[: valid_n + 1]
-            else:
-                logging.debug(f'drift-{idx}: mask is None')
-                important_feas = None
         elif exp_method == 'distance_mm1':
             if mask is not None:
                 if use_gumbel:

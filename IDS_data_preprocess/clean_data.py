@@ -10,7 +10,7 @@ Duplicate traffic was removed (duplicate means exactly same traffic).
 For "02_20_2018.csv" file, it has 4 extra features in the beninning (Flow ID, Src IP, Src Port, Dst IP,)
 -> extra features were removed.
 
-"""
+"""  # noqa: E501
 
 import os
 import traceback
@@ -63,7 +63,8 @@ def clean_single_file(filename, is_specific=False) -> None:
     traffic_contain_infinity_count = 0
     traffic_invalid_timestamp_count = 0
 
-    traffics = []  # a list of traffics, including feature vector and label names.
+    # a list of traffics, including feature vector and label names.
+    traffics = []
 
     print(f'cleaning file {filename}...')
 
@@ -121,7 +122,8 @@ def clean_single_file(filename, is_specific=False) -> None:
     ]  # sort by the timestamp of the traffic
 
     X = sorted_traffics[:, 0:-1].astype(np.float)  # feature vectors
-    y_name = sorted_traffics[:, -1]  # full name indicating the meaning of the label.
+    # full name indicating the meaning of the label.
+    y_name = sorted_traffics[:, -1]
 
     y = []  # assigned labels
     for name in y_name:
