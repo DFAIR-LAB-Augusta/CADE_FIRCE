@@ -783,7 +783,7 @@ def explain_instance(
         )
 
         mask_best = exp_test.fit_local(
-            X=x,
+            x=x,
             y=y,
             epochs=exp_epoch,
             lambda_1=lambda_1,

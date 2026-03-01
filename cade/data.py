@@ -415,11 +415,11 @@ def save_training_full_feature_vectors(
     train_labels: list[int],
     newfamily: int,
 ) -> str:
-    r"""
+    """
     Vectorize training samples into a binary feature matrix and save to a compressed NPZ file.
 
     This function transforms raw text-based feature lists into a sparse-like dense
-    binary matrix ($X \in \{0, 1\}^{n \times m}$). It maps each sample's features
+    binary matrix ($X \\in \\{0, 1\\}^{n \times m}$). It maps each sample's features
     to their corresponding indices in the global `train_feature_names` list.
 
     Args:

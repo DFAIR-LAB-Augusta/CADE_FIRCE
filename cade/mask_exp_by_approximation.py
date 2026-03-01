@@ -17,10 +17,10 @@ import warnings
 
 import numpy as np
 import tensorflow as tf
-from keras.losses import binary_crossentropy
 from numpy.random import seed
 from sklearn.metrics import accuracy_score
 from tensorflow import set_random_seed
+from tensorflow.keras import backend as k  # type: ignore
 
 os.environ['PYTHONHASHSEED'] = '0'
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'  # so the IDs match nvidia-smi
@@ -48,26 +48,33 @@ warnings.filterwarnings('ignore')
 class OptimizeExp:
     def __init__(
         self,
-        input_shape,
-        mask_shape,
-        model,
-        num_class,
-        optimizer,
-        initializer,
-        lr,
-        regularizer,
-        model_file,
+        input_shape: tuple[int, ...],
+        mask_shape: tuple[int, ...],
+        model: tf.keras.Model,
+        num_class: int,
+        optimizer: type[tf.train.Optimizer],
+        initializer: tf.keras.initializers.Initializer,
+        lr: float,
+        regularizer: str,
+        model_file: str,
     ) -> None:
         """
+        Initialize the optimization-based explanation generator.
+
+        This class facilitates the creation of a feature mask that explains a
+        model's prediction by optimizing a perturbation that minimizes
+        the target class probability while maintaining mask sparsity.
+
         Args:
-            input_shape: the input shape for an input image
-            mask_shape: the shape of the mask
-            model:  the target model we want to explain
-            num_class: number of distinct labels in the target model
-            optimizer: tf.train.Optimizer() object
-            initializer: initializer for the mask
-            lr: learning rate
-            regularizer: add regularization for the mask (to keep it as small as possible)
+            input_shape: The shape of the input feature vector (e.g., (n_features,)).
+            mask_shape: The shape of the mask to be optimized (usually matches input_shape).
+            model: The pre-trained Keras model instance to be explained.
+            num_class: Total number of distinct output labels in the target model.
+            optimizer: A TensorFlow optimizer class (uninstantiated) for the mask update.
+            initializer: A Keras initializer for the initial mask weights.
+            lr: The learning rate for the mask optimization process.
+            regularizer: The type of penalty to apply to the mask (e.g., 'elasticnet').
+            model_file: System path to the saved model file for weight reloading.
         """  # noqa: E501
 
         self.model = model
@@ -82,12 +89,49 @@ class OptimizeExp:
         self.model_file = model_file
 
     @staticmethod
-    def elasticnet_loss(tensor):
+    def elasticnet_loss(tensor: tf.Tensor) -> tf.Tensor:
+        """
+        Calculates the Elastic Net regularization loss for a given tensor.
+
+        This penalty is a linear combination of the L1 norm (Sparsity) and
+        the L2 norm (Smoothness). It is particularly useful for feature
+        selection when multiple features may be correlated.
+
+        The loss is calculated as:
+        $$\text{Loss} = \\sum |x| + \\sqrt{\\sum x^2}$$
+
+        Args:
+            tensor: The input TensorFlow tensor (usually the raw mask weights).
+
+        Returns:
+            A scalar TensorFlow tensor representing the combined regularization loss.
+        """
         loss_l1 = tf.reduce_sum(tf.abs(tensor))
         loss_l2 = tf.sqrt(tf.reduce_sum(tf.square(tensor)))
         return loss_l1 + loss_l2
 
-    def build_opt_func(self, input_shape, mask_shape) -> None:
+    def build_opt_func(
+        self, _input_shape: tuple[int, ...], mask_shape: tuple[int, ...]
+    ) -> None:
+        """
+        Constructs the TensorFlow computational graph for mask optimization.
+
+        This method defines the symbolic tensors, loss functions, and training
+        operations required to find an optimal feature mask. It sets up two
+        parallel paths (explanation and remainder) and implements a combined
+        loss function to encourage sparsity while maintaining prediction fidelity.
+
+        The total loss is defined as:
+        $$L = \text{loss\\_exp} - \text{loss\\_remain} + \\lambda_1 \\cdot \text{loss\\_reg\\_mask}$$
+
+        Args:
+            _input_shape: The shape of the input sample (unused).
+            mask_shape: The shape of the trainable mask variable.
+
+        Returns:
+            None. Attributes like `self.train_op`, `self.loss`, and `self.mask`
+            are initialized within the class instance.
+        """  # noqa: E501
         # use tf.variable_scope and tf.get_variable() to achieve "variable sharing"
         # AUTO_REUSE: we create variables if they do not exist, and return them otherwise  # noqa: E501
         with tf.variable_scope('mask', reuse=tf.AUTO_REUSE):
@@ -120,11 +164,9 @@ class OptimizeExp:
         self.output_remain = self.model(self.x_remain)
 
         self.y_target = tf.placeholder(tf.float32, shape=(None, self.num_class))
-        self.loss_exp = tf.reduce_mean(
-            binary_crossentropy(self.y_target, self.output_exp)
-        )
-        self.loss_remain = tf.reduce_mean(
-            binary_crossentropy(self.y_target, self.output_remain)
+        self.loss_exp = k.mean(k.binary_crossentropy(self.y_target, self.output_exp))
+        self.loss_remain = k.mean(
+            k.binary_crossentropy(self.y_target, self.output_remain)
         )
 
         if self.regularizer == 'l1':
@@ -151,39 +193,42 @@ class OptimizeExp:
         with tf.variable_scope('opt', reuse=tf.AUTO_REUSE):
             self.train_op = self.optimizer.minimize(self.loss, var_list=self.var_train)
 
-    def fit_local(
+    def fit_local(  # noqa: C901
         self,
-        X,
-        y,
-        epochs,
-        lambda_1,
-        display_interval=10,
-        exp_acc_lowerbound=0.8,
-        iteration_thredshold=1e-4,
-        lambda_patience=100,
-        lambda_multiplier=1.5,
-        early_stop_patience=10,
-    ):
-        """explain a local prediction.
+        x: np.ndarray,
+        y: np.ndarray,
+        epochs: int,
+        lambda_1: float,
+        display_interval: int = 10,
+        exp_acc_lowerbound: float = 0.8,
+        iteration_threshold: float = 1e-4,
+        lambda_patience: int = 100,
+        lambda_multiplier: float = 1.5,
+        early_stop_patience: int = 10,
+    ) -> np.ndarray | None:
+        """
+        Explains a local model prediction by optimizing a feature mask.
 
-        Arguments:
-            X {numpy array} -- A single image from the input.
-            y {numpy vector} -- the probabilities of each label for X.
-            epochs {int} -- [training epochs]
-            lambda_1 {int} -- hyper parameter
+        This method iteratively updates a mask to find the minimal set of features
+        that maintain the model's prediction. It uses dynamic lambda scaling
+        and early stopping to balance explanation accuracy and mask sparsity.
 
-        Keyword Arguments:
-            display_interval {int} -- [display the loss values periodically] (default: {10})
-            exp_acc_lowerbound {float} -- [the lowerbound of the accuracy by using only explanation part as features] (default: {0.8})
-            iteration_thredshold {float} -- [if loss - loss_prev < threshold, early_stop + 1] (default: {1e-4})
-            lambda_patience {int} -- [to work with lambda_up_counter or lambda_down_counter] (default: {100})
-            lambda_multiplier {float} -- [if achieved lambda_patience, then increase/decrease lambda] (default: {1.5})
-            early_stop_patience {int} -- [if loss didn't change much for X epoches, then stop] (default: {10})
+        Args:
+            x: A single input sample (feature vector) to be explained.
+            y: The model's original predicted probability distribution for x.
+            epochs: Maximum number of optimization iterations.
+            lambda_1: Initial regularization strength for mask sparsity.
+            display_interval: Frequency (in epochs) to log optimization progress.
+            exp_acc_lowerbound: Target threshold for explanation fidelity.
+            iteration_threshold: Minimum loss improvement required to reset early stopping.
+            lambda_patience: Epochs to wait before adjusting the lambda multiplier.
+            lambda_multiplier: Factor by which to scale lambda when patience is met.
+            early_stop_patience: Epochs to wait for improvement before halting.
 
         Returns:
-            [numpy array] -- [the best mask we can found]
+            The optimized feature mask as an ndarray, or None if optimization fails.
         """  # noqa: E501
-        input_ = np.expand_dims(X, axis=0).reshape(1, -1)
+        input_ = np.expand_dims(x, axis=0).reshape(1, -1)
         logging.debug(f'input_ shape: {input_.shape}')
 
         if len(y.shape) == 1:
@@ -206,9 +251,7 @@ class OptimizeExp:
         ):  # WARNING: it has to be like this, or the weights of the model could not be really loaded.  # noqa: E501
             sess.run(self.mask.initializer)
             sess.run(tf.variables_initializer(self.optimizer.variables()))
-            sess.run(
-                tf.initializers.global_variables()
-            )  # same as tf.global_variables_initializer()
+            sess.run(tf.global_variables_initializer())
 
             for step in range(epochs):
                 feed_dict = {
@@ -266,9 +309,9 @@ class OptimizeExp:
                             )
                         )
 
-                if (np.abs(loss - loss_last) < iteration_thredshold) or (
+                if (np.abs(loss - loss_last) < iteration_threshold) or (
                     np.abs(loss_sparse_mask - loss_sparse_mask_last)
-                    < iteration_thredshold
+                    < iteration_threshold
                 ):
                     early_stop_counter += 1
 
@@ -276,8 +319,7 @@ class OptimizeExp:
                     early_stop_counter >= early_stop_patience
                 ):
                     logging.info(
-                        'Reach the threshold and stop training at iteration %d/%d.'
-                        % (step + 1, epochs)
+                        f'Reach the threshold and stop training at iteration {step + 1}/{epochs}.'  # noqa: E501
                     )
                     mask_best = sess.run([self.mask_normalized])[0]
                     break
@@ -324,18 +366,9 @@ class OptimizeExp:
                             f'updating best sparse mask loss from {loss_sparse_mask_best} to {loss_sparse_mask}'  # noqa: E501
                         )
                         logging.debug(
-                            'Epoch %d/%d: loss = %.5f explanation_loss = %.5f remain_loss = %.5f '  # noqa: E501
-                            'mask_sparse_loss = %.5f acc_remain = %.5f acc_exp = %.5f'
-                            % (
-                                step + 1,
-                                epochs,
-                                loss,
-                                loss_exp,
-                                loss_remain,
-                                loss_sparse_mask,
-                                acc_1,
-                                acc_2,
-                            )
+                            f'Epoch {step + 1}/{epochs}: {loss:.5f = } explanation_loss = {loss_exp:.5f} '  # noqa: E501
+                            f'remain_loss = {loss_remain:.5f} mask_sparse_loss = {loss_sparse_mask:.5f} '  # noqa: E501
+                            f'acc_remain = {acc_1:.5f} acc_exp = {acc_2:.5f}'
                         )
                         loss_best = loss
                         loss_sparse_mask_best = loss_sparse_mask
