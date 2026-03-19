@@ -246,7 +246,7 @@ class ContrastiveAE:
             ae = Autoencoder(self.dims)
             ae_model, _encoder_model = ae.build()
 
-            input_ = ae_model.get_input_at(0)
+            input_ = ae_model.inputs[0]
 
             # add loss function -- for efficiency and not doubling the network's weights, we pass a batch of samples and  # noqa: E501
             # make the pairs from it at the loss level.
