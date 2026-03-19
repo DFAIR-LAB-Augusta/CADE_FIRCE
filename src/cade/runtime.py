@@ -38,6 +38,7 @@ class CadeRuntimeDetector:
         lr: float = 1e-3,
         display_interval: int = 10,
         weights_path: str | None = None,
+        device: str = "/CPU:0",
         *,
         force_retrain: bool = False,
     ) -> None:
@@ -81,7 +82,7 @@ class CadeRuntimeDetector:
         self.lr = lr
         self.display_interval = display_interval
         self.force_retrain = force_retrain
-
+        self.device = device
         if weights_path is None:
             tmp_dir = Path(tempfile.mkdtemp(prefix="cade_runtime_"))
             self.weights_path = str(tmp_dir / "cae_weights.h5")
@@ -153,23 +154,21 @@ class CadeRuntimeDetector:
         if self.force_retrain and Path(self.weights_path).exists():
             Path(self.weights_path).unlink()
 
-        cae.train(
-            x_train=x_train,
-            y_train=y_encoded,
-            lambda_1=self.cae_lambda_1,
-            batch_size=self.batch_size,
-            epochs=self.epochs,
-            similar_ratio=self.similar_ratio,
-            margin=self.margin,
-            weights_save_name=self.weights_path,
-            display_interval=self.display_interval,
-        )
+        with tf.device(self.device):
+            cae.train(
+                x_train=x_train,
+                y_train=y_encoded,
+                lambda_1=self.cae_lambda_1,
+                batch_size=self.batch_size,
+                epochs=self.epochs,
+                similar_ratio=self.similar_ratio,
+                margin=self.margin,
+                weights_save_name=self.weights_path,
+                display_interval=self.display_interval,
+            )
 
-        # Build encoder and load trained weights
-        self.encoder_ = self._build_encoder(self.weights_path)
-
-        # Latent train representation
-        z_train = self._encode(x_train)
+            self.encoder_ = self._build_encoder(self.weights_path)
+            z_train = self._encode(x_train)
 
         # Per-class latent groups
         z_family = [z_train[y_encoded == idx] for idx in range(len(classes))]
@@ -238,7 +237,8 @@ class CadeRuntimeDetector:
             raise RuntimeError(
                 "distance statistics missing; detector is not properly fitted.")
 
-        z = self._encode(x)  # (n_samples, latent_dim)
+        with tf.device(self.device):
+            z = self._encode(x)  # (n_samples, latent_dim)
 
         # Distances to all centroids: (n_samples, n_classes)
         distances = np.linalg.norm(
