@@ -9,7 +9,6 @@ Functions for training a unified autoencoder or individual autoencoders for each
 import logging
 import math
 import os
-import random
 import time
 import warnings
 from collections.abc import Callable
@@ -22,30 +21,28 @@ from keras.callbacks import ModelCheckpoint
 from keras.layers import Dense, Input
 from keras.models import Model
 from keras.optimizers import Adam
-from numpy.random import seed
 from sklearn.cluster import KMeans
-from tensorflow import set_random_seed
 
 import cade.data as data
 import cade.logger as logger
 import cade.utils as utils
 
-os.environ['PYTHONHASHSEED'] = '0'
+# os.environ['PYTHONHASHSEED'] = '0'
 
 
-random.seed(1)
-seed(1)
+# random.seed(1)
+# seed(1)
 
-set_random_seed(2)
+# set_random_seed(2)
 
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-# TensorFlow wizardry
-config = tf.ConfigProto()
-# Don't pre-allocate memory; allocate as-needed
-config.gpu_options.allow_growth = True
-# Only allow a total of half the GPU memory to be allocated
-config.gpu_options.per_process_gpu_memory_fraction = 0.5
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# # TensorFlow wizardry
+# config = tf.ConfigProto()
+# # Don't pre-allocate memory; allocate as-needed
+# config.gpu_options.allow_growth = True
+# # Only allow a total of half the GPU memory to be allocated
+# config.gpu_options.per_process_gpu_memory_fraction = 0.5
 
 
 class Autoencoder:
@@ -180,7 +177,8 @@ class Autoencoder:
         warnings.filterwarnings('ignore')
 
         for n_init in range(10, 110, 10):
-            kmeans = KMeans(n_clusters=num_classes, n_init=n_init, random_state=42)
+            kmeans = KMeans(n_clusters=num_classes,
+                            n_init=n_init, random_state=42)
             y_pred = kmeans.fit_predict(latent)
             acc = utils.get_cluster_acc(y_old, y_pred)
             logging.debug(f'KMeans n_init: {n_init}, acc: {acc}')
@@ -232,7 +230,8 @@ class ContrastiveAE:
             display_interval: Epoch interval for printing training logs.
         """  # noqa: E501
         if os.path.exists(weights_save_name):
-            logging.info('weights file exists, no need to train contrastive AE')
+            logging.info(
+                'weights file exists, no need to train contrastive AE')
         else:
             tf.reset_default_graph()
 
@@ -245,7 +244,8 @@ class ContrastiveAE:
 
             # add loss function -- for efficiency and not doubling the network's weights, we pass a batch of samples and  # noqa: E501
             # make the pairs from it at the loss level.
-            left_p = tf.convert_to_tensor(list(range(int(batch_size / 2))), tf.int32)
+            left_p = tf.convert_to_tensor(
+                list(range(int(batch_size / 2))), tf.int32)
             right_p = tf.convert_to_tensor(
                 list(range(int(batch_size / 2), batch_size)), tf.int32
             )
@@ -256,7 +256,8 @@ class ContrastiveAE:
             #      right_p labels: 1, 2, 4, 8 | 3, 4, 1, 7
             # check whether labels[left_p] == labels[right_p] for each element
             is_same = tf.cast(
-                tf.equal(tf.gather(labels, left_p), tf.gather(labels, right_p)),
+                tf.equal(tf.gather(labels, left_p),
+                         tf.gather(labels, right_p)),
                 tf.float32,
             )
             # NOTE: add a small number like 1e-10 would prevent tf.sqrt() to have 0 values, further leading gradients and loss all NaN.  # noqa: E501
@@ -289,10 +290,12 @@ class ContrastiveAE:
             # Final loss
             loss = lambda_1 * contrastive_loss + ae_loss
 
-            train_op = self.optimizer.minimize(loss, var_list=tf.trainable_variables())
+            train_op = self.optimizer.minimize(
+                loss, var_list=tf.trainable_variables())
 
             # Start training
-            with tf.Session(config=config) as sess:
+            # with tf.Session(config=config) as sess:
+            with tf.Session() as sess:
                 loss_batch, aux_batch = [], []
                 contrastive_loss_batch, ae_loss_batch = [], []
 

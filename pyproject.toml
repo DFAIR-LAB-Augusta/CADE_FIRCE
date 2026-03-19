@@ -8,10 +8,10 @@ packages = ["src/cade"]
 
 [project]
 name = "cade-firce"
-version = "0.2.0"
+version = "0.3.0"
 description = "CADE (modernized) for integration into FIRCE"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 license = { file = "LICENSE" }
 authors = [{ name = "DFAIR Lab (Augusta University)" }]
 
@@ -29,17 +29,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# TensorFlow stack:
-# - On Apple Silicon dev: tensorflow-macos + tensorflow-metal
-# - On Linux/others: tensorflow (pip package)
 tf = [
-  "tensorflow>=2.15,<3; platform_system != 'Darwin'",
-  "tensorflow-macos>=2.15,<3; platform_system == 'Darwin' and platform_machine == 'arm64'",
-  "tensorflow-metal>=1.1; platform_system == 'Darwin' and platform_machine == 'arm64'",
+  "keras>=3.10,<4",
+  "tensorflow>=2.19,<3; platform_system != 'Darwin'",
 ]
-
-# If you later want separate “extras” for prod GPU vs CPU, uv supports extras + sources/indexes,
-# but this basic split is usually enough for M1 dev vs Linux GPU.
 
 
 [dependency-groups]
