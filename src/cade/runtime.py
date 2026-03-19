@@ -144,7 +144,7 @@ class CadeRuntimeDetector:
         self.class_to_idx_ = class_to_idx
 
         # Train contrastive AE
-        optimizer = tf.compat.v1.train.AdamOptimizer
+        optimizer = tf.keras.optimizers.Adam
         cae = ContrastiveAE(self.dims, optimizer, self.lr)
         if self.force_retrain and Path(self.weights_path).exists():
             Path(self.weights_path).unlink()

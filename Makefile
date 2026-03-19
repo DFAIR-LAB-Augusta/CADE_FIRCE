@@ -42,14 +42,14 @@ run: ## Run main entrypoint (adjust if you add a proper console script)
 	$(UV) run $(PY) main.py
 
 test: ## Run tests
-	OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 \
-	NUMEXPR_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 	$(UV) run pytest -q
+# 	OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 \
+# 	NUMEXPR_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 
 test-cov: ## Run tests with coverage
-	OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 \
-	NUMEXPR_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 	$(UV) run pytest --cov=cade --cov-report=term-missing --cov-report=xml
+# 	OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 \
+# 	NUMEXPR_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 
 lint: ## Lint with ruff and apply safe auto-fixes
 	$(UV) run $(RUFF) check .
