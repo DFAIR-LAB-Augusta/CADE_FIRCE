@@ -16,11 +16,11 @@ from collections import OrderedDict
 
 import matplotlib.pyplot as plt
 import numpy as np
+import tensorflow as tf
 from keras import backend as k
 from keras.models import Model, load_model
 from numpy.random import seed
 from sklearn.metrics import accuracy_score, confusion_matrix
-from tensorflow import set_random_seed
 from tqdm import tqdm
 
 import cade.utils as utils
@@ -30,8 +30,7 @@ os.environ['PYTHONHASHSEED'] = '0'
 
 random.seed(1)
 seed(1)
-
-set_random_seed(2)
+tf.random.set_seed(2)
 
 
 def report_classification_results(
@@ -97,7 +96,8 @@ def report_classification_results_helper(
         y_new_pred = clf_model.predict(x_new)
         y_new_prob = np.max(clf_model.predict_proba(x_new), axis=1)
     else:
-        logging.error(f'saved model name {model_path} is neither h5 or pkl format')
+        logging.error(
+            f'saved model name {model_path} is neither h5 or pkl format')
         sys.exit(-1)
 
     utils.create_parent_folder(report_file_path)
@@ -106,9 +106,11 @@ def report_classification_results_helper(
         for idx, real_label in tqdm(enumerate(y_new), desc='MLP classified'):
             if only_wrongly_samples:
                 if y_new_pred[idx] != real_label:
-                    f.write(f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
+                    f.write(
+                        f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
             else:
-                f.write(f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
+                f.write(
+                    f'{idx},{real_label},{y_new_pred[idx]},{y_new_prob[idx]}\n')
     if only_wrongly_samples:
         logging.info('Reported wrongly classified samples.')
     else:
@@ -129,7 +131,8 @@ def combine_classify_and_detect_result(
         combined_report_path: Destination path for the merged CSV.
     """
     if os.path.exists(combined_report_path):
-        logging.info(f'Report already exists at {combined_report_path}. Skipping.')
+        logging.info(
+            f'Report already exists at {combined_report_path}. Skipping.')
         return
 
     header = 'sample_idx,real_label,pred_label,closest_label,is_drift,pred_prob,min_distance,min_anomaly_score\n'  # noqa: E501
@@ -251,8 +254,10 @@ def evaluate_newfamily_as_drift_by_distance(
         acc_classifier, acc_closest, dist_one_by_one_check_result_path
     )
 
-    logging.debug(f'use drift closest family as prediction accuracy:\n {acc_closest}')
-    logging.debug(f'use drift closest family as prediction confusion matrix:\n {cm}')
+    logging.debug(
+        f'use drift closest family as prediction accuracy:\n {acc_closest}')
+    logging.debug(
+        f'use drift closest family as prediction confusion matrix:\n {cm}')
 
 
 def plot_inspection_effort_pr_value_by_dist(
@@ -328,7 +333,8 @@ def plot_inspection_effort_pr_value_by_dist(
     ax.set_title(
         'Precision Recall value as the change of inspection efforts', fontsize=12
     )
-    ax.set_xticks(np.around(np.linspace(0, len(inspection_cnt_list), 10), decimals=0))
+    ax.set_xticks(np.around(np.linspace(
+        0, len(inspection_cnt_list), 10), decimals=0))
     ax.set_xlabel('Inspection Effort (# of Samples)', fontsize=16)
     ax.set_ylabel('Rate', fontsize=16)
     ax.legend(loc='best')

@@ -10,7 +10,6 @@ from timeit import default_timer as timer
 import numpy as np
 import tensorflow as tf
 from numpy.random import seed
-from tensorflow import set_random_seed
 
 import cade.classifier as classifier
 import cade.data as data
@@ -28,7 +27,7 @@ os.environ['PYTHONHASHSEED'] = '0'
 random.seed(1)
 seed(1)
 
-set_random_seed(2)
+tf.random.set_seed(2)
 
 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'  # so the IDs match nvidia-smi
@@ -100,7 +99,8 @@ def train_mlp(
     Returns:
         tuple: (mlp_classifier, y_pred, model_path)
     """
-    mlp_dims = utils.get_model_dims('MLP', num_features, config.mlp_hidden, num_classes)
+    mlp_dims = utils.get_model_dims(
+        'MLP', num_features, config.mlp_hidden, num_classes)
 
     mlp_model_name = (
         f'{config.data}_{config.classifier}_'
@@ -378,7 +378,8 @@ def main() -> None:
         )
 
     e1 = timer()
-    logging.info(f'Training contrastive autoencoder time: {(e1 - s1):.3f} seconds')
+    logging.info(
+        f'Training contrastive autoencoder time: {(e1 - s1):.3f} seconds')
     logging.info('Training contrastive autoencoder finished')
 
     # --------------------------------------------------------- #

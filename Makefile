@@ -55,7 +55,6 @@ lint: ## Lint with ruff and apply safe auto-fixes
 	$(UV) run $(RUFF) check .
 	uv run $(RUFF) check . --fix
 
-
 clean: ## Remove common caches/artifacts
 	rm -rf .pytest_cache .ruff_cache .mypy_cache coverage.xml htmlcov **/__pycache__ **/*.pyc dist build *.egg-info
 

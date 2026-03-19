@@ -25,12 +25,12 @@ import tensorflow as tf
 from keras import backend as k
 from keras.models import Model
 from numpy.random import seed
-from tensorflow import set_random_seed
 from tqdm import tqdm
-from utils import SimConfig
 
 import cade.utils as utils
 from cade.autoencoder import Autoencoder
+
+from .utils import SimConfig
 
 os.environ['PYTHONHASHSEED'] = '0'
 
@@ -38,7 +38,7 @@ os.environ['PYTHONHASHSEED'] = '0'
 random.seed(1)
 seed(1)
 
-set_random_seed(2)
+tf.random.set_seed(2)
 
 
 def explain_drift_samples_per_instance(
@@ -97,7 +97,8 @@ def explain_drift_samples_per_instance(
             _z_train, _z_closest_family, centroid, dis_to_centroid, mad = (
                 load_training_info(training_info_for_detect_path, family)
             )
-            distance_lowerbound = mad * mad_threshold + np.median(dis_to_centroid)
+            distance_lowerbound = mad * mad_threshold + \
+                np.median(dis_to_centroid)
             dis_to_centroid_inds = np.array(
                 dis_to_centroid
             ).argsort()  # distance ascending
@@ -180,7 +181,8 @@ def get_drift_samples_to_explain(
     pattern = re.compile(r'best inspection count: \d+')
     with open(one_by_one_check_result_path) as f:
         inspect_cnt = int(
-            re.findall(pattern, f.read())[0].replace('best inspection count: ', '')
+            re.findall(pattern, f.read())[0].replace(
+                'best inspection count: ', '')
         )
 
     drift_samples_idx_list, drift_samples_real_labels, drift_samples_closest = (
@@ -329,6 +331,7 @@ def explain_instance(
         )
 
         if mask_best is not None:
-            logging.debug(f'M1 * mask == 1: {np.where(m1 * mask_best == 1.0)[0]}')
+            logging.debug(
+                f'M1 * mask == 1: {np.where(m1 * mask_best == 1.0)[0]}')
             return m1 * mask_best
     return None

@@ -29,7 +29,6 @@ import tensorflow as tf
 from keras import backend as k
 from keras.models import Model
 from numpy.random import seed
-from tensorflow import set_random_seed
 from tqdm import tqdm
 
 import cade.data as data
@@ -44,8 +43,7 @@ os.environ['PYTHONHASHSEED'] = '0'
 random.seed(1)
 seed(1)
 
-set_random_seed(2)
-
+tf.random.set_seed(2)
 
 families = [
     'FakeInstaller',
@@ -234,7 +232,8 @@ def get_important_fea_and_distance(  # noqa: C901
             important_feas_len_list = read_feas_len_from_file(
                 save_distance_mm1_important_fea_len_file
             )
-            print(f'load important_feas_len_list len: {len(important_feas_len_list)}')
+            print(
+                f'load important_feas_len_list len: {len(important_feas_len_list)}')
         else:
             logging.error(
                 'you need to perform distance_mm1 method to get the length of important features first'  # noqa: E501
@@ -247,7 +246,8 @@ def get_important_fea_and_distance(  # noqa: C901
     success = 0
 
     lowerbound_list = []
-    logging.debug(f'len(drift_samples_idx_list): {len(drift_samples_idx_list)}')
+    logging.debug(
+        f'len(drift_samples_idx_list): {len(drift_samples_idx_list)}')
 
     # Declaration moved here to avoid unbound errors
     x_arr = []
@@ -291,7 +291,8 @@ def get_important_fea_and_distance(  # noqa: C901
                 valid_n = len(np.where(prod > 0)[0])
                 valid_n = min(valid_n, important_feas_len_list[idx])
 
-                ranked_prod_idx = np.argsort(prod, kind='mergesort', axis=None)[::-1]
+                ranked_prod_idx = np.argsort(
+                    prod, kind='mergesort', axis=None)[::-1]
                 important_feas = ranked_prod_idx[: valid_n + 1]
         elif exp_method == 'distance_mm1':
             if mask is not None:
@@ -381,13 +382,15 @@ def get_important_fea_and_distance(  # noqa: C901
     latent_x = encoder_model.predict(x_arr)
     latent_x_perturb = encoder_model.predict(x_perturb_arr)
     original_dis = np.sqrt(np.sum(np.square(latent_x - centroid_arr), axis=1))
-    perturbed_dis = np.sqrt(np.sum(np.square(latent_x_perturb - centroid_arr), axis=1))
+    perturbed_dis = np.sqrt(
+        np.sum(np.square(latent_x_perturb - centroid_arr), axis=1))
 
     success_idx = np.where(perturbed_dis <= lowerbound_list)[0]
     success = len(success_idx)
 
     if exp_method == 'distance_mm1':
-        write_result_to_file(original_dis, 'original distance', save_result_path, 'w')
+        write_result_to_file(
+            original_dis, 'original distance', save_result_path, 'w')
         write_result_to_file(
             important_feas_len_list,
             f'{exp_method} important feas len',
@@ -409,7 +412,8 @@ def get_important_fea_and_distance(  # noqa: C901
         )
 
     with open(save_distance_mm1_important_fea_len_file, 'w') as f:
-        logging.debug(f'important_feas_len_list len: {len(important_feas_len_list)}')
+        logging.debug(
+            f'important_feas_len_list len: {len(important_feas_len_list)}')
         f.writelines(f'{fea_len}\n' for fea_len in important_feas_len_list)
 
 
@@ -491,7 +495,8 @@ def write_result_to_file(
     try:
         with open(filepath, mode) as f:
             if not single_list:
-                logging.warning(f"Result '{name}' not written: single_list is empty.")
+                logging.warning(
+                    f"Result '{name}' not written: single_list is empty.")
                 return
 
             avg = np.average(single_list)
@@ -504,7 +509,8 @@ def write_result_to_file(
             f.write('=' * 80 + '\n')
 
     except (ZeroDivisionError, TypeError, ValueError) as e:
-        logging.error(f'Calculation error for {name}: {e}\n{traceback.format_exc()}')
+        logging.error(
+            f'Calculation error for {name}: {e}\n{traceback.format_exc()}')
     except OSError as e:
         logging.error(f'File access error for {filepath}: {e}')
 
@@ -601,7 +607,8 @@ def get_backpropagation_important_features(
             )
         )
         end = timer()
-        logging.debug(f'{idx} - backpropagation_gradients time: {(end - start):.3f}s')
+        logging.debug(
+            f'{idx} - backpropagation_gradients time: {(end - start):.3f}s')
 
         distance_method_important_feas_len = important_feas_len_list[idx]
 
@@ -626,11 +633,13 @@ def get_backpropagation_important_features(
             centroid_arr = np.copy(family_info_dict[family][0])
         else:
             x_perturb_arr = np.vstack((x_perturb_arr, x_new))
-            centroid_arr = np.vstack((centroid_arr, family_info_dict[family][0]))
+            centroid_arr = np.vstack(
+                (centroid_arr, family_info_dict[family][0]))
 
     encoder_model.load_weights(cae_weights_path, by_name=True)
     latent_x_perturb = encoder_model.predict(x_perturb_arr)
-    perturbed_dis = np.sqrt(np.sum(np.square(latent_x_perturb - centroid_arr), axis=1))
+    perturbed_dis = np.sqrt(
+        np.sum(np.square(latent_x_perturb - centroid_arr), axis=1))
     success = len(np.where(perturbed_dis <= lowerbound_list)[0])
     write_result_to_file(
         perturbed_dis, 'gradient perturbed distance', save_result_path, 'a'
@@ -648,7 +657,8 @@ def get_backpropagation_important_features(
         )
 
     e = timer()
-    logging.debug(f'get_backpropagation_important_features time: {(e - s):.3f}s')
+    logging.debug(
+        f'get_backpropagation_important_features time: {(e - s):.3f}s')
 
 
 def backpropagation_gradients(
@@ -803,7 +813,8 @@ def eval_random_select_important_feas(
                 ))
 
         latent_x_random = encoder_model.predict(x_random_arr)
-        random_dis = np.sqrt(np.sum(np.square(latent_x_random - centroid_arr), axis=1))
+        random_dis = np.sqrt(
+            np.sum(np.square(latent_x_random - centroid_arr), axis=1))
 
         success_random = len(np.where(random_dis <= lowerbound_list)[0])
         total_success_random += success_random
