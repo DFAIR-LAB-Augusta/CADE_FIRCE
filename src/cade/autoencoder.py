@@ -27,6 +27,7 @@ import cade.data as data
 import cade.logger as logger
 import cade.utils as utils
 
+tf.compat.v1.disable_eager_execution()
 # os.environ['PYTHONHASHSEED'] = '0'
 
 
@@ -133,7 +134,7 @@ class Autoencoder:
 
             autoencoder, _encoder = self.build()
 
-            pretrain_optimizer = Adam(lr=lr)
+            pretrain_optimizer = Adam(learning_rate=lr)
 
             autoencoder.compile(optimizer=pretrain_optimizer, loss='mse')
 
@@ -229,14 +230,19 @@ class ContrastiveAE:
             weights_save_name: File path to save the best weights.
             display_interval: Epoch interval for printing training logs.
         """  # noqa: E501
+        x_train = np.asarray(x_train, dtype=np.float32)
+        y_train = np.asarray(y_train, dtype=np.int32)
+        utils.create_parent_folder(weights_save_name)
         if os.path.exists(weights_save_name):
             logging.info(
                 'weights file exists, no need to train contrastive AE')
         else:
-            tf.reset_default_graph()
+            k.clear_session()
+            # tf.reset_default_graph()
+            tf.compat.v1.reset_default_graph()
 
-            labels = tf.placeholder(tf.float32, [None])
-            lambda_1_tensor = tf.placeholder(tf.float32)
+            labels = tf.compat.v1.placeholder(tf.float32, [None])
+            lambda_1_tensor = tf.compat.v1.placeholder(tf.float32)
             ae = Autoencoder(self.dims)
             ae_model, _encoder_model = ae.build()
 
@@ -291,15 +297,17 @@ class ContrastiveAE:
             loss = lambda_1 * contrastive_loss + ae_loss
 
             train_op = self.optimizer.minimize(
-                loss, var_list=tf.trainable_variables())
+                loss,
+                var_list=tf.compat.v1.trainable_variables(),
+            )
 
             # Start training
             # with tf.Session(config=config) as sess:
-            with tf.Session() as sess:
+            with tf.compat.v1.Session() as sess:
                 loss_batch, aux_batch = [], []
                 contrastive_loss_batch, ae_loss_batch = [], []
 
-                sess.run(tf.global_variables_initializer())
+                sess.run(tf.compat.v1.global_variables_initializer())
 
                 min_loss = np.inf
 
