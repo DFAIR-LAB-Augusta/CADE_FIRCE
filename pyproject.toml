@@ -45,10 +45,15 @@ dev = [
 ]
 
 [project.scripts]
-cade-main = "cade.main:main"
+cade-main = "cade.cli:main"
 cade-clean = "scripts.data_prep.clean_data:main" # requires adding a main() to clean_data
 
 [tool.pytest.ini_options]
-addopts = "-q"
 testpaths = ["tests"]
-pythonpath = ["src"]
+markers = [
+    "unit: fast isolated tests with no real external I/O",
+    "integration: multi-module tests using real temp files and tiny datasets",
+    "smoke_sanity: minimal package/CLI startup checks",
+    "fast: extra-fast subset for tight loops",
+    "regression: guards against a previously seen bug",
+]
