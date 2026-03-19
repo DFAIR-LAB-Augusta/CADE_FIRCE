@@ -85,7 +85,7 @@ class CadeRuntimeDetector:
         self.device = device
         if weights_path is None:
             tmp_dir = Path(tempfile.mkdtemp(prefix="cade_runtime_"))
-            self.weights_path = str(tmp_dir / "cae_weights.h5")
+            self.weights_path = str(tmp_dir / "cae.weights.h5")
         else:
             self.weights_path = weights_path
 
