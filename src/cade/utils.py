@@ -9,7 +9,6 @@ Helper functions for setting up the environment.
 import argparse
 import logging
 import os
-import random
 import sys
 import traceback
 from dataclasses import dataclass
@@ -18,17 +17,14 @@ from typing import Literal
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from numpy.random import seed
 from scipy.optimize import linear_sum_assignment
-from tensorflow import set_random_seed
 
-os.environ['PYTHONHASHSEED'] = '0'
+# os.environ['PYTHONHASHSEED'] = '0'
 
 
-random.seed(1)
-seed(1)
-
-set_random_seed(2)
+# random.seed(1)
+# seed(1)
+# tf.random.set_seed(2)
 
 
 @dataclass(frozen=True)
@@ -71,7 +67,8 @@ def parse_args() -> SimConfig:
     Returns:
         SimConfig -- a typed dataclass containing the parsed arguments.
     """
-    p = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     p.add_argument('--data', required=True, help='The dataset to use.')
 
@@ -112,11 +109,13 @@ def parse_args() -> SimConfig:
         default='512-128-32',
         help='Hidden layers of CAE (e.g., "512-128-32").',
     )
-    p.add_argument('--cae-batch-size', default=64, type=int, help='CAE batch size.')
+    p.add_argument('--cae-batch-size', default=64,
+                   type=int, help='CAE batch size.')
     p.add_argument(
         '--cae-lr', default=0.001, type=float, help='CAE Adam learning rate.'
     )
-    p.add_argument('--cae-epochs', default=250, type=int, help='CAE training epochs.')
+    p.add_argument('--cae-epochs', default=250,
+                   type=int, help='CAE training epochs.')
     p.add_argument(
         '--cae-lambda-1', default=1e-1, type=float, help='CAE loss function lambda_1.'
     )
@@ -167,12 +166,14 @@ def parse_args() -> SimConfig:
     p.add_argument(
         '--mlp-hidden', default='100-30', help='MLP hidden layers (e.g., "100-30").'
     )
-    p.add_argument('--mlp-batch-size', default=32, type=int, help='MLP batch size.')
+    p.add_argument('--mlp-batch-size', default=32,
+                   type=int, help='MLP batch size.')
     p.add_argument(
         '--mlp-lr', default=0.001, type=float, help='MLP Adam learning rate.'
     )
     p.add_argument('--mlp-epochs', default=50, type=int, help='MLP epochs.')
-    p.add_argument('--mlp-dropout', default=0.2, type=float, help='MLP dropout rate.')
+    p.add_argument('--mlp-dropout', default=0.2,
+                   type=float, help='MLP dropout rate.')
 
     # Data specific
     p.add_argument(
@@ -183,7 +184,8 @@ def parse_args() -> SimConfig:
     )
 
     # RandomForest [Deprecated]
-    p.add_argument('--tree', type=int, default=100, help='n_estimators for RF.')
+    p.add_argument('--tree', type=int, default=100,
+                   help='n_estimators for RF.')
     p.add_argument(
         '--rf-retrain', default=0, type=int, choices=[0, 1], help='Retrain RF.'
     )

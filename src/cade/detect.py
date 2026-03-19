@@ -14,7 +14,6 @@ import numpy as np
 import tensorflow as tf
 from keras import backend as k
 from numpy.random import seed
-from tensorflow import set_random_seed
 from tqdm import tqdm
 
 from cade.autoencoder import Autoencoder
@@ -25,16 +24,22 @@ os.environ['PYTHONHASHSEED'] = '0'
 random.seed(1)
 seed(1)
 
-set_random_seed(2)
+tf.random.set_seed(2)
 
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-# TensorFlow wizardry
-config = tf.ConfigProto()
-# Don't pre-allocate memory; allocate as-needed
-config.gpu_options.allow_growth = True
-# Only allow a total of half the GPU memory to be allocated
-config.gpu_options.per_process_gpu_memory_fraction = 0.5
+def configure_tensorflow() -> None:
+    tf.random.set_seed(2)
+
+    gpus = tf.config.list_physical_devices("GPU")
+    if not gpus:
+        return
+
+    for gpu in gpus:
+        try:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        except RuntimeError:
+            # Memory growth must be set before GPUs are initialized
+            pass
 
 
 def detect_drift_samples(
@@ -52,7 +57,8 @@ def detect_drift_samples(
     training_info_for_detect_path: str,
 ) -> None:
     if os.path.exists(all_detect_path) and os.path.exists(simple_detect_path):
-        logging.info('Detection result files exist, no need to redo the detection')
+        logging.info(
+            'Detection result files exist, no need to redo the detection')
     else:
         """get latent data for the entire training and testing set"""
         z_train, z_test = get_latent_representation_keras(
@@ -60,7 +66,8 @@ def detect_drift_samples(
         )
 
         """get latent data for each family in the training set"""
-        n, n_family, z_family = get_latent_data_for_each_family(z_train, y_train)
+        n, n_family, z_family = get_latent_data_for_each_family(
+            z_train, y_train)
 
         """get centroid for each family in the latent space"""
         centroids = [np.mean(z_family[i], axis=0) for i in range(n)]
@@ -97,9 +104,11 @@ def detect_drift_samples(
                 for k in tqdm(range(len(x_test)), desc='detect', total=x_test.shape[0]):
                     z_k = z_test[k]
                     """get distance between each testing sample and each centroid"""
-                    dis_k = [np.linalg.norm(z_k - centroids[i]) for i in range(n)]
+                    dis_k = [np.linalg.norm(z_k - centroids[i])
+                             for i in range(n)]
                     anomaly_k = [
-                        np.abs(dis_k[i] - np.median(dis_family[i])) / mad_family[i]
+                        np.abs(dis_k[i] - np.median(dis_family[i])
+                               ) / mad_family[i]
                         for i in range(n)
                     ]
                     logging.debug(f'sample-{k} - dis_k: {dis_k}')
@@ -243,7 +252,8 @@ def get_mad_for_each_family(
     for i in range(n):
         median = np.median(dis_family[i])
         logging.debug(f'family {i} median: {median}')
-        diff_list = [np.abs(dis_family[i][j] - median) for j in range(n_family[i])]
+        diff_list = [np.abs(dis_family[i][j] - median)
+                     for j in range(n_family[i])]
         mad = 1.4826 * np.median(
             diff_list
         )  # 1.4826: assuming the underlying distribution is Gaussian

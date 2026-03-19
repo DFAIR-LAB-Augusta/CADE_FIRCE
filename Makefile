@@ -51,16 +51,9 @@ test-cov: ## Run tests with coverage
 	NUMEXPR_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 	$(UV) run pytest --cov=cade --cov-report=term-missing --cov-report=xml
 
-fmt: ## Format with ruff
-	$(UV) run $(RUFF) format .
-
-lint: ## Lint with ruff
+lint: ## Lint with ruff and apply safe auto-fixes
 	$(UV) run $(RUFF) check .
-
-lint-fix: ## Lint with ruff and apply safe auto-fixes
 	uv run $(RUFF) check . --fix
-
-style: fmt lint ## Format + lint
 
 clean: ## Remove common caches/artifacts
 	rm -rf .pytest_cache .ruff_cache .mypy_cache coverage.xml htmlcov **/__pycache__ **/*.pyc dist build *.egg-info

@@ -10,7 +10,6 @@ from timeit import default_timer as timer
 import numpy as np
 import tensorflow as tf
 from numpy.random import seed
-from tensorflow import set_random_seed
 
 import cade.classifier as classifier
 import cade.data as data
@@ -28,19 +27,34 @@ os.environ['PYTHONHASHSEED'] = '0'
 random.seed(1)
 seed(1)
 
-set_random_seed(2)
+tf.random.set_seed(2)
 
 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'  # so the IDs match nvidia-smi
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 
+def configure_tensorflow() -> None:
+    tf.random.set_seed(2)
+
+    gpus = tf.config.list_physical_devices("GPU")
+    if not gpus:
+        return
+
+    for gpu in gpus:
+        try:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        except RuntimeError:
+            # Memory growth must be set before GPUs are initialized
+            pass
+
+
 # TensorFlow wizardry
-config = tf.ConfigProto()
-# Don't pre-allocate memory; allocate as-needed
-config.gpu_options.allow_growth = True
-# Only allow a total of half the GPU memory to be allocated
-config.gpu_options.per_process_gpu_memory_fraction = 0.5
+# config = tf.ConfigProto()
+# # Don't pre-allocate memory; allocate as-needed
+# config.gpu_options.allow_growth = True
+# # Only allow a total of half the GPU memory to be allocated
+# config.gpu_options.per_process_gpu_memory_fraction = 0.5
 # Create a session with the above options specified.
 # OLD & Bad
 # k.tensorflow_backend.set_session(tf.Session(config=config))
@@ -100,7 +114,8 @@ def train_mlp(
     Returns:
         tuple: (mlp_classifier, y_pred, model_path)
     """
-    mlp_dims = utils.get_model_dims('MLP', num_features, config.mlp_hidden, num_classes)
+    mlp_dims = utils.get_model_dims(
+        'MLP', num_features, config.mlp_hidden, num_classes)
 
     mlp_model_name = (
         f'{config.data}_{config.classifier}_'
@@ -378,7 +393,8 @@ def main() -> None:
         )
 
     e1 = timer()
-    logging.info(f'Training contrastive autoencoder time: {(e1 - s1):.3f} seconds')
+    logging.info(
+        f'Training contrastive autoencoder time: {(e1 - s1):.3f} seconds')
     logging.info('Training contrastive autoencoder finished')
 
     # --------------------------------------------------------- #

@@ -33,7 +33,7 @@ import cade.utils as utils
 # random.seed(1)
 # seed(1)
 
-# set_random_seed(2)
+# tf.random.set_seed(2)
 
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
