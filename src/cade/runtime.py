@@ -115,6 +115,10 @@ class CadeRuntimeDetector:
             5. compute per-class centroids
             6. compute per-class median and MAD statistics
         """
+        try:
+            tf.config.optimizer.set_jit(False)
+        except Exception:
+            pass
         x_train = np.asarray(x_train, dtype=np.float32)
         y_train = np.asarray(y_train)
 
