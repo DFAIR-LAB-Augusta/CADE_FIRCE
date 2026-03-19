@@ -9,7 +9,6 @@ Helper functions for setting up the environment.
 import argparse
 import logging
 import os
-import random
 import sys
 import traceback
 from dataclasses import dataclass
@@ -18,16 +17,14 @@ from typing import Literal
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-import tensorflow as tf
-from numpy.random import seed
 from scipy.optimize import linear_sum_assignment
 
-os.environ['PYTHONHASHSEED'] = '0'
+# os.environ['PYTHONHASHSEED'] = '0'
 
 
-random.seed(1)
-seed(1)
-tf.random.set_seed(2)
+# random.seed(1)
+# seed(1)
+# tf.random.set_seed(2)
 
 
 @dataclass(frozen=True)
