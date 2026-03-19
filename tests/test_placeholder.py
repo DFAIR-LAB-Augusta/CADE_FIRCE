@@ -4,5 +4,5 @@ def test_syntax_and_imports() -> None:
     and the cade package can be imported.
     """
     import cade
-
+    assert cade is not None
     assert cade.__name__ == 'cade'
