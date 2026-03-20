@@ -8,7 +8,7 @@ packages = ["src/cade"]
 
 [project]
 name = "cade-firce"
-version = "0.3.6"
+version = "0.3.7"
 description = "CADE (modernized) for integration into FIRCE"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
