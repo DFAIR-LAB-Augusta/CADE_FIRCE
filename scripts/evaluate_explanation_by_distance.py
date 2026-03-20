@@ -96,17 +96,17 @@ def load_necessary_model_and_data(
     """  # noqa: E501
     if 'drebin' in dataset:
         cae_dims = [x_train.shape[1], 512, 128, 32, 7]
-        cae_weights_path = f'models/{dataset}/cae_{x_train.shape[1]}-512-128-32-7_lr0.0001_b64_e250_m10.0_lambda0.1_weights.h5'  # noqa: E501
+        cae_weights_path = f'models/{dataset}/cae_{x_train.shape[1]}-512-128-32-7_lr0.0001_b64_e250_m10.0_lambda0.1,weights.h5'  # noqa: E501
         feature_file = (
             f'data/{dataset}/drebin_new{new_label}_train_selected_features.txt'
         )
     elif 'IDS' in dataset:
         cae_dims = [x_train.shape[1], 64, 32, 16, 3]
-        cae_weights_path = f'models/{dataset}/cae_83-64-32-16-3_lr0.0001_b512_e250_m10.0_lambda0.1_weights.h5'  # noqa: E501
+        cae_weights_path = f'models/{dataset}/cae_83-64-32-16-3_lr0.0001_b512_e250_m10.0_lambda0.1.weights.h5'  # noqa: E501
         feature_file = 'data/IDS_83_features.txt'
     elif 'bluehex' in dataset:
         cae_dims = [x_train.shape[1], 1024, 256, 64, 5]
-        cae_weights_path = f'models/{dataset}/cae_1857-1024-256-64-5_lr0.0001_b256_e250_m10.0_weights.h5'  # noqa: E501
+        cae_weights_path = f'models/{dataset}/cae_1857-1024-256-64-5_lr0.0001_b256_e250_m10.0.weights.h5'  # noqa: E501
         feature_file = '/home/liminyang/bluehex/cade_feature_names_setting5.txt'
     else:
         sys.exit(-1)

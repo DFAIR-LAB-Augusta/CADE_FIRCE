@@ -358,7 +358,7 @@ def main() -> None:
         ae_weights_path = os.path.join(
             ckpt_dir,
             f'cae_{cae_dims_str}_lr{config.cae_lr}'
-            f'_b{config.cae_batch_size}_e{config.cae_epochs}_m{config.margin}_lambda{config.cae_lambda_1}_weights.h5',
+            f'_b{config.cae_batch_size}_e{config.cae_epochs}_m{config.margin}_lambda{config.cae_lambda_1}.weights.h5',
         )
         cae = ContrastiveAE(cae_dims, optimizer, config.cae_lr)
         cae.train(
@@ -377,7 +377,7 @@ def main() -> None:
         ae_weights_path = os.path.join(
             ckpt_dir,
             f'pure_ae_{cae_dims_str}_lr{config.cae_lr}'
-            f'_b{config.cae_batch_size}_e{config.cae_epochs}_m{config.margin}_weights.h5',
+            f'_b{config.cae_batch_size}_e{config.cae_epochs}_m{config.margin}.weights.h5',
         )
         pure_ae = Autoencoder(cae_dims)
         batch_size = int(
