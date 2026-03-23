@@ -274,7 +274,7 @@ class CadeRuntimeDetector:
         """Build an encoder model and load trained weights."""
         ae = Autoencoder(self.dims)
         _ae_model, encoder = ae.build()
-        encoder.load_weights(weights_path, by_name=True)
+        encoder.load_weights(weights_path)
         return encoder
 
     def _encode(self, x: np.ndarray) -> np.ndarray:
