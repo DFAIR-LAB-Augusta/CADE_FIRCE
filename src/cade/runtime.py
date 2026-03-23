@@ -3,12 +3,15 @@ from __future__ import annotations
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import tensorflow as tf
 
 from cade.autoencoder import Autoencoder, ContrastiveAE
+
+if TYPE_CHECKING:
+    from keras.models import Model
 
 
 @dataclass(slots=True)
@@ -97,7 +100,7 @@ class CadeRuntimeDetector:
         self.centroids_: np.ndarray | None = None
         self.median_distances_: np.ndarray | None = None
         self.mad_distances_: np.ndarray | None = None
-        self.encoder_: Any | None = None
+        self.encoder_: Model | None = None
 
     @property
     def is_fitted(self) -> bool:
@@ -270,7 +273,7 @@ class CadeRuntimeDetector:
             chunk_drift=chunk_drift,
         )
 
-    def _build_encoder(self, weights_path: str) -> Any:
+    def _build_encoder(self, weights_path: str) -> Model:
         """Build an encoder model and load trained weights."""
         ae = Autoencoder(self.dims)
         _ae_model, encoder = ae.build()
@@ -281,7 +284,7 @@ class CadeRuntimeDetector:
         """Encode features into latent space."""
         if self.encoder_ is None:
             raise RuntimeError("encoder_ is not initialized.")
-        z = self.encoder_.predict(x, verbose=0)
+        z = self.encoder_.predict(x, verbose=str(0))
         return np.asarray(z, dtype=np.float32)
 
     def _require_fitted(self) -> None:
