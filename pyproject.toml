@@ -33,7 +33,12 @@ tf = [
   "keras>=3.10,<4",
   "tensorflow>=2.19,<3; platform_system != 'Darwin'",
 ]
-
+  
+tf-deb = [
+  "keras>=3.10,<4",
+  "tensorflow[and-cuda]==2.19.1; platform_system == 'Linux'",
+  "tensorflow>=2.19,<3; platform_system != 'Darwin'",
+]
 
 [dependency-groups]
 dev = [
