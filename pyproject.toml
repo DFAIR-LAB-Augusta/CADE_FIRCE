@@ -3,7 +3,7 @@ requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-# This is crucial for the 'src' layout
+sources = ["src"]
 packages = ["src/cade"]
 
 [project]
@@ -28,7 +28,14 @@ dependencies = [
   "seaborn>=0.13",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-cov>=5",
+  "ruff>=0.6",
+  "mypy>=1.8",
+  "pre-commit>=3.7",
+]
 tf = [
   "keras>=3.10,<4",
   "tensorflow>=2.19,<3; platform_system != 'Darwin'",
@@ -38,15 +45,6 @@ tf-deb = [
   "keras>=3.10,<4",
   "tensorflow[and-cuda]==2.19.1; platform_system == 'Linux'",
   "tensorflow>=2.19,<3; platform_system != 'Darwin'",
-]
-
-[dependency-groups]
-dev = [
-  "pytest>=8",
-  "pytest-cov>=5",
-  "ruff>=0.6",
-  "mypy>=1.8",
-  "pre-commit>=3.7",
 ]
 
 [project.scripts]
@@ -62,3 +60,4 @@ markers = [
     "fast: extra-fast subset for tight loops",
     "regression: guards against a previously seen bug",
 ]
+pythonpath = ["src"]
