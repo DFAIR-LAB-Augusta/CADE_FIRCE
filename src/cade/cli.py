@@ -37,7 +37,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 def configure_tensorflow() -> None:
     tf.random.set_seed(2)
 
-    gpus = tf.config.list_physical_devices("GPU")
+    gpus = tf.config.list_physical_devices('GPU')
     if not gpus:
         return
 
@@ -114,8 +114,7 @@ def train_mlp(
     Returns:
         tuple: (mlp_classifier, y_pred, model_path)
     """
-    mlp_dims = utils.get_model_dims(
-        'MLP', num_features, config.mlp_hidden, num_classes)
+    mlp_dims = utils.get_model_dims('MLP', num_features, config.mlp_hidden, num_classes)
 
     mlp_model_name = (
         f'{config.data}_{config.classifier}_'
@@ -358,7 +357,7 @@ def main() -> None:
         ae_weights_path = os.path.join(
             ckpt_dir,
             f'cae_{cae_dims_str}_lr{config.cae_lr}'
-            f'_b{config.cae_batch_size}_e{config.cae_epochs}_m{config.margin}_lambda{config.cae_lambda_1}_weights.h5',
+            f'_b{config.cae_batch_size}_e{config.cae_epochs}_m{config.margin}_lambda{config.cae_lambda_1}.weights.h5',
         )
         cae = ContrastiveAE(cae_dims, optimizer, config.cae_lr)
         cae.train(
@@ -377,7 +376,7 @@ def main() -> None:
         ae_weights_path = os.path.join(
             ckpt_dir,
             f'pure_ae_{cae_dims_str}_lr{config.cae_lr}'
-            f'_b{config.cae_batch_size}_e{config.cae_epochs}_m{config.margin}_weights.h5',
+            f'_b{config.cae_batch_size}_e{config.cae_epochs}_m{config.margin}.weights.h5',
         )
         pure_ae = Autoencoder(cae_dims)
         batch_size = int(
@@ -393,8 +392,7 @@ def main() -> None:
         )
 
     e1 = timer()
-    logging.info(
-        f'Training contrastive autoencoder time: {(e1 - s1):.3f} seconds')
+    logging.info(f'Training contrastive autoencoder time: {(e1 - s1):.3f} seconds')
     logging.info('Training contrastive autoencoder finished')
 
     # --------------------------------------------------------- #

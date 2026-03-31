@@ -3,30 +3,34 @@ name: style
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   ruff:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, dfair-gha-runner]
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
 
+      - name: Install Python
+        run: uv python install 3.11
+
+      - name: Show Python
+        run: |
+          uv run --python 3.11 python --version
+          which uv
+
       - name: Sync dependencies
-        run: uv sync
+        run: uv sync --python 3.11
 
       - name: Ruff format (check)
-        run: uv run ruff format --check .
+        run: uv run --python 3.11 ruff format --check .
 
       - name: Ruff lint
-        run: uv run ruff check .
+        run: uv run --python 3.11 ruff check .

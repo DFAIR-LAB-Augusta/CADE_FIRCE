@@ -10,8 +10,8 @@ from cade.data import load_features
 def test_load_features_maps_known_and_unknown_labels_for_drebin(
     tmp_path: Path,
 ) -> None:
-    dataset_name = "drebin_sample"
-    npz_path = tmp_path / f"{dataset_name}.npz"
+    dataset_name = 'drebin_sample'
+    npz_path = tmp_path / f'{dataset_name}.npz'
 
     x_train = np.array([[1.0, 0.0], [0.0, 1.0]], dtype=np.float32)
     y_train = np.array([10, 20])
@@ -47,9 +47,9 @@ def test_load_features_maps_known_and_unknown_labels_for_drebin(
 @pytest.mark.unit
 @pytest.mark.fast
 def test_load_features_exits_for_unsupported_dataset(tmp_path: Path) -> None:
-    dataset_name = "unsupported_dataset"
+    dataset_name = 'unsupported_dataset'
     np.savez_compressed(
-        tmp_path / f"{dataset_name}.npz",
+        tmp_path / f'{dataset_name}.npz',
         X_train=np.array([[1.0]], dtype=np.float32),
         y_train=np.array([1]),
         X_test=np.array([[1.0]], dtype=np.float32),

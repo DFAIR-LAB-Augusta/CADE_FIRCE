@@ -82,14 +82,12 @@ def load_features(
     unique_classes = np.asarray(le.classes_)
     encoded_values = np.asarray(le.transform(unique_classes))
 
-    mapping = {label: int(val)
-               for label, val in zip(unique_classes, encoded_values)}
+    mapping = {label: int(val) for label, val in zip(unique_classes, encoded_values)}
 
     logging.debug(f'LabelEncoder mapping: {mapping}')
 
     # Relabel test set: known labels get mapped, unknown get persistent_new_family
-    y_test_prime_list = [mapping.get(
-        label, persistent_new_family) for label in y_test]
+    y_test_prime_list = [mapping.get(label, persistent_new_family) for label in y_test]
     y_test_prime = np.array(y_test_prime_list, dtype=np.int32)
 
     y_train_prime = np.array(y_train_prime, dtype=np.int32)
@@ -346,8 +344,7 @@ def split_drebin_train_and_test(
     test_labels = label_sorted_by_time[-test_num:] + [newfamily] * len(
         newfamily_sha_list
     )
-    logging.debug(
-        f'train_shas: {len(train_shas)}, test_shas: {len(test_shas)}')
+    logging.debug(f'train_shas: {len(train_shas)}, test_shas: {len(test_shas)}')
 
     return train_shas, test_shas, train_labels, test_labels
 
@@ -381,8 +378,7 @@ def get_training_full_feature_names(
     )
 
     if os.path.exists(saved_train_feature_file):
-        logging.debug(
-            f'Loading cached feature names from {saved_train_feature_file}')
+        logging.debug(f'Loading cached feature names from {saved_train_feature_file}')
         with open(saved_train_feature_file) as f:
             train_feature_names = [line.strip() for line in f]
     else:
@@ -450,8 +446,7 @@ def save_training_full_feature_vectors(
 
         x = np.zeros((num_samples, num_features), dtype=np.float32)
 
-        feature_to_idx = {name: i for i,
-                          name in enumerate(train_feature_names)}
+        feature_to_idx = {name: i for i, name in enumerate(train_feature_names)}
 
         for sample_idx, sha in enumerate(train_shas):
             file_path = os.path.join(raw_feature_vectors_folder, sha)
@@ -528,8 +523,7 @@ def get_selected_features(
         intermediate_folder, f'drebin_new{newfamily}_train_selected_feature_vectors.npz'
     )
     if not os.path.exists(saved_selected_vectors_file):
-        np.savez_compressed(saved_selected_vectors_file,
-                            X_train=x_select, y_train=y)
+        np.savez_compressed(saved_selected_vectors_file, X_train=x_select, y_train=y)
 
     return selected_features, saved_selected_vectors_file
 
@@ -586,8 +580,7 @@ def epoch_batches(
     b_out_y = np.zeros([batch_count, batch_size], dtype=int)
     logging.debug(f'b_out_x: {b_out_x.shape}, b_out_y: {b_out_y.shape}')
 
-    random_idx = np.random.permutation(
-        x_train.shape[0])  # random shuffle the batches
+    random_idx = np.random.permutation(x_train.shape[0])  # random shuffle the batches
     # split the random shuffled X_train and y_train to batch_count shares
     b_out_x[:, :half_size] = np.split(
         x_train[random_idx[: batch_count * half_size]], batch_count

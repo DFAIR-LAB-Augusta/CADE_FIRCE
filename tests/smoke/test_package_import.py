@@ -6,4 +6,4 @@ def test_import_cade_package() -> None:
     import cade
 
     assert cade is not None
-    assert cade.__name__ == "cade"
+    assert cade.__name__ == 'cade'

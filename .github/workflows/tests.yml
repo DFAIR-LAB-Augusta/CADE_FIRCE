@@ -10,16 +10,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        python-version: ["3.11"]
+        include:
+          - runner: [self-hosted, linux, x64, dfair-gha-runner]
+            python-version: "3.11"
+            use_setup_python: false
+            uv_groups: "--group dev --group tf-deb"
+          - runner: macos-latest
+            python-version: "3.11"
+            use_setup_python: true
+            uv_groups: "--group dev --group tf"
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Python
+        if: ${{ matrix.use_setup_python }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -29,8 +37,20 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Install Python with uv
+        if: ${{ !matrix.use_setup_python }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Show Python
+        run: |
+          if [ "${{ matrix.use_setup_python }}" = "true" ]; then
+            python --version
+          else
+            uv run --python ${{ matrix.python-version }} python --version
+          fi
+
       - name: Sync dependencies
-        run: uv sync
+        run: uv sync --python ${{ matrix.python-version }} ${{ matrix.uv_groups }}
 
       - name: Run tests
         env:
@@ -39,4 +59,4 @@ jobs:
           VECLIB_MAXIMUM_THREADS: "1"
           NUMEXPR_NUM_THREADS: "1"
           OPENBLAS_NUM_THREADS: "1"
-        run: uv run pytest -q
+        run: uv run --python ${{ matrix.python-version }} pytest -q
