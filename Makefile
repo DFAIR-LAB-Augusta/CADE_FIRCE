@@ -52,6 +52,7 @@ test-cov: ## Run tests with coverage
 # 	NUMEXPR_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 
 lint: ## Lint with ruff and apply safe auto-fixes
+	$(UV) run ruff format .
 	$(UV) run $(RUFF) check .
 	uv run $(RUFF) check . --fix
 

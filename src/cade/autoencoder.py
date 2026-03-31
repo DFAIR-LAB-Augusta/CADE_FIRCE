@@ -179,8 +179,7 @@ class Autoencoder:
         warnings.filterwarnings('ignore')
 
         for n_init in range(10, 110, 10):
-            kmeans = KMeans(n_clusters=num_classes,
-                            n_init=n_init, random_state=42)
+            kmeans = KMeans(n_clusters=num_classes, n_init=n_init, random_state=42)
             y_pred = kmeans.fit_predict(latent)
             acc = utils.get_cluster_acc(y_old, y_pred)
             logging.debug(f'KMeans n_init: {n_init}, acc: {acc}')
@@ -223,12 +222,11 @@ class ContrastiveAE:
 
         utils.create_parent_folder(weights_save_name)
         if os.path.exists(weights_save_name):
-            logging.info(
-                "weights file exists, no need to train contrastive AE")
+            logging.info('weights file exists, no need to train contrastive AE')
             return
 
         if batch_size < 4 or batch_size % 4 != 0:
-            raise ValueError("batch_size must be a multiple of 4 and >= 4")
+            raise ValueError('batch_size must be a multiple of 4 and >= 4')
 
         ae = Autoencoder(self.dims, verbose=self.verbose)
         ae_model, encoder_model = ae.build()
@@ -270,8 +268,7 @@ class ContrastiveAE:
                     is_same = tf.cast(tf.equal(y_left, y_right), tf.float32)
 
                     dist = tf.sqrt(
-                        tf.reduce_sum(
-                            tf.square(z_left - z_right), axis=1) + 1e-10
+                        tf.reduce_sum(tf.square(z_left - z_right), axis=1) + 1e-10
                     )
 
                     contrastive_vec = is_same * dist + (1.0 - is_same) * tf.nn.relu(
@@ -286,35 +283,30 @@ class ContrastiveAE:
                     total_loss = reconstruction_loss + lambda_1 * contrastive_loss
 
                 grads = tape.gradient(total_loss, ae_model.trainable_variables)
-                optimizer.apply_gradients(
-                    zip(grads, ae_model.trainable_variables))
+                optimizer.apply_gradients(zip(grads, ae_model.trainable_variables))
 
                 loss_batch.append(float(total_loss.numpy()))
                 contrastive_loss_batch.append(float(contrastive_loss.numpy()))
                 ae_loss_batch.append(float(reconstruction_loss.numpy()))
                 same_pair_batch.append(float(tf.reduce_sum(is_same).numpy()))
-                diff_pair_batch.append(
-                    float(tf.reduce_sum(1.0 - is_same).numpy()))
+                diff_pair_batch.append(float(tf.reduce_sum(1.0 - is_same).numpy()))
 
             current_loss = float(np.mean(loss_batch))
 
             if math.isnan(current_loss):
-                logging.error("NaN value in loss")
-                raise RuntimeError(
-                    "NaN encountered during CADE contrastive training")
+                logging.error('NaN value in loss')
+                raise RuntimeError('NaN encountered during CADE contrastive training')
 
             if epoch % display_interval == 0:
                 logging.info(
-                    f"Epoch {epoch}: loss {current_loss} -- "
-                    f"contrastive {np.mean(contrastive_loss_batch)} -- "
-                    f"ae {np.mean(ae_loss_batch)} -- "
-                    f"pairs {np.mean(same_pair_batch)} : {np.mean(diff_pair_batch)} -- "
-                    f"time {time.time() - epoch_time}"
+                    f'Epoch {epoch}: loss {current_loss} -- '
+                    f'contrastive {np.mean(contrastive_loss_batch)} -- '
+                    f'ae {np.mean(ae_loss_batch)} -- '
+                    f'pairs {np.mean(same_pair_batch)} : {np.mean(diff_pair_batch)} -- '
+                    f'time {time.time() - epoch_time}'
                 )
 
             if current_loss < min_loss:
-                logging.info(
-                    f"updating best loss from {min_loss} to {current_loss}"
-                )
+                logging.info(f'updating best loss from {min_loss} to {current_loss}')
                 min_loss = current_loss
                 ae_model.save_weights(weights_save_name)

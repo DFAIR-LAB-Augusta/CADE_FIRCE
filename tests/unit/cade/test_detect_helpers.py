@@ -26,8 +26,9 @@ def test_get_latent_data_for_each_family_groups_vectors() -> None:
 
     assert n == 2
     assert n_family == [2, 2]
-    assert np.array_equal(z_family[0], np.array(
-        [[0.0, 0.0], [1.0, 1.0]], dtype=np.float32))
+    assert np.array_equal(
+        z_family[0], np.array([[0.0, 0.0], [1.0, 1.0]], dtype=np.float32)
+    )
     assert np.array_equal(
         z_family[1],
         np.array([[10.0, 10.0], [11.0, 11.0]], dtype=np.float32),

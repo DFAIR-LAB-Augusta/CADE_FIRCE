@@ -70,14 +70,12 @@ class MLPClassifier:
         x = input_tensor
 
         for i in range(n_stacks - 1):
-            x = Dense(self.dims[i + 1],
-                      activation=self.act, name=f'clf_{i}')(x)
+            x = Dense(self.dims[i + 1], activation=self.act, name=f'clf_{i}')(x)
 
             if self.dropout > 0:
                 x = Dropout(self.dropout, seed=42)(x)
 
-        x = Dense(self.dims[-1], activation='softmax',
-                  name=f'clf_{n_stacks - 1}')(x)
+        x = Dense(self.dims[-1], activation='softmax', name=f'clf_{n_stacks - 1}')(x)
 
         output_tensor = x
         model = Model(inputs=input_tensor, outputs=output_tensor, name='MLP')
@@ -176,8 +174,7 @@ class MLPClassifier:
                 plt.figure()
                 plt.plot(history.history['loss'], '-b', label='Training')
                 if 'val_loss' in history.history:
-                    plt.plot(history.history['val_loss'],
-                             '--r', label='Testing')
+                    plt.plot(history.history['val_loss'], '--r', label='Testing')
                 plt.legend()
                 plt.ylabel('loss')
                 plt.xlabel('epoch')
@@ -194,8 +191,7 @@ class MLPClassifier:
                 val_acc = val_score[1]
 
                 metric_name = clf.metrics_names[1]
-                logging.info(
-                    f'MLP validation {metric_name}: {val_acc * 100:.2f}%')
+                logging.info(f'MLP validation {metric_name}: {val_acc * 100:.2f}%')
             else:
                 raise AttributeError(
                     f'Expected a Keras Model, but loaded {type(clf)}. '
@@ -217,8 +213,7 @@ class MLPClassifier:
                     epochs=epochs,
                     batch_size=batch_size,
                     verbose=str(self.verbose),
-                    callbacks=[LoggingCallback(
-                        logging.debug)] if self.verbose else [],
+                    callbacks=[LoggingCallback(logging.debug)] if self.verbose else [],
                 )
 
             k.clear_session()
@@ -269,8 +264,7 @@ class MLPClassifier:
         new_acc = float(accuracy_score(y_new, y_pred))
         cm = confusion_matrix(y_new, y_pred)
 
-        logging.info(
-            f'MLP testing set {clf.metrics_names[1]}: {new_acc * 100:.2f}%')
+        logging.info(f'MLP testing set {clf.metrics_names[1]}: {new_acc * 100:.2f}%')
         logging.info(f'MLP confusion matrix: \n {cm}')
 
         utils.plot_confusion_matrix(
@@ -327,8 +321,7 @@ class RFClassifier:
         )
 
         if retrain:
-            model = RandomForestClassifier(
-                n_estimators=self.tree, random_state=0)
+            model = RandomForestClassifier(n_estimators=self.tree, random_state=0)
             model.fit(x_train, y_train)
             utils.create_parent_folder(self.rf_save_path)
             with open(self.rf_save_path, 'wb') as f:

@@ -37,7 +37,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 def configure_tensorflow() -> None:
     tf.random.set_seed(2)
 
-    gpus = tf.config.list_physical_devices("GPU")
+    gpus = tf.config.list_physical_devices('GPU')
     if not gpus:
         return
 
@@ -114,8 +114,7 @@ def train_mlp(
     Returns:
         tuple: (mlp_classifier, y_pred, model_path)
     """
-    mlp_dims = utils.get_model_dims(
-        'MLP', num_features, config.mlp_hidden, num_classes)
+    mlp_dims = utils.get_model_dims('MLP', num_features, config.mlp_hidden, num_classes)
 
     mlp_model_name = (
         f'{config.data}_{config.classifier}_'
@@ -393,8 +392,7 @@ def main() -> None:
         )
 
     e1 = timer()
-    logging.info(
-        f'Training contrastive autoencoder time: {(e1 - s1):.3f} seconds')
+    logging.info(f'Training contrastive autoencoder time: {(e1 - s1):.3f} seconds')
     logging.info('Training contrastive autoencoder finished')
 
     # --------------------------------------------------------- #

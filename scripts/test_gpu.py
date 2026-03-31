@@ -7,7 +7,7 @@ from textwrap import dedent
 
 
 def run_cmd(cmd: list[str]) -> int:
-    print(f"$ {' '.join(cmd)}", flush=True)
+    print(f'$ {" ".join(cmd)}', flush=True)
     proc = subprocess.run(
         cmd,
         text=True,
@@ -18,21 +18,21 @@ def run_cmd(cmd: list[str]) -> int:
         print(proc.stdout.rstrip(), flush=True)
     if proc.stderr:
         print(proc.stderr.rstrip(), flush=True)
-    print(f"[exit code: {proc.returncode}]", flush=True)
+    print(f'[exit code: {proc.returncode}]', flush=True)
     return proc.returncode
 
 
 def main() -> int:
-    print("Python executable:", sys.executable, flush=True)
-    print("VIRTUAL_ENV:", os.environ.get("VIRTUAL_ENV", "<unset>"), flush=True)
+    print('Python executable:', sys.executable, flush=True)
+    print('VIRTUAL_ENV:', os.environ.get('VIRTUAL_ENV', '<unset>'), flush=True)
     print(
-        "CUDA_VISIBLE_DEVICES:",
-        os.environ.get("CUDA_VISIBLE_DEVICES", "<unset>"),
+        'CUDA_VISIBLE_DEVICES:',
+        os.environ.get('CUDA_VISIBLE_DEVICES', '<unset>'),
         flush=True,
     )
 
-    run_cmd(["nvidia-smi"])
-    run_cmd([sys.executable, "-c", "import tensorflow as tf; print(tf.__file__)"])
+    run_cmd(['nvidia-smi'])
+    run_cmd([sys.executable, '-c', 'import tensorflow as tf; print(tf.__file__)'])
 
     probe = dedent(
         """
@@ -94,8 +94,8 @@ def main() -> int:
         """
     ).strip()
 
-    return run_cmd([sys.executable, "-X", "faulthandler", "-c", probe])
+    return run_cmd([sys.executable, '-X', 'faulthandler', '-c', probe])
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     raise SystemExit(main())

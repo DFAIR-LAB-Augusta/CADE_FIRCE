@@ -140,8 +140,7 @@ class OptimizeExp:
 
         self.mask_reshaped = self.mask
 
-        self.mask_normalized = tf.minimum(
-            1.0, tf.maximum(self.mask_reshaped, 0.0))
+        self.mask_normalized = tf.minimum(1.0, tf.maximum(self.mask_reshaped, 0.0))
 
         # get_input_at(node_index): Retrieves the input tensor(s) of a layer at a given node. node_index = 0 corresponds to the first time the layer was called.  # noqa: E501
         self.input = self.model.get_input_at(0)
@@ -149,8 +148,7 @@ class OptimizeExp:
         self.x_exp = (
             self.input * self.mask_normalized
         )  # + self.fused_image * reverse_mask  # the explanation we are looking for, which contributes the most to the final prediction  # noqa: E501
-        reverse_mask = tf.ones_like(
-            self.mask_normalized) - self.mask_normalized
+        reverse_mask = tf.ones_like(self.mask_normalized) - self.mask_normalized
         self.x_remain = (
             self.input * reverse_mask
         )  # + self.fused_image * self.mask_normalized
@@ -164,10 +162,8 @@ class OptimizeExp:
         )  # self.x_exp is the input to the self.model
         self.output_remain = self.model(self.x_remain)
 
-        self.y_target = tf.placeholder(
-            tf.float32, shape=(None, self.num_class))
-        self.loss_exp = k.mean(k.binary_crossentropy(
-            self.y_target, self.output_exp))
+        self.y_target = tf.placeholder(tf.float32, shape=(None, self.num_class))
+        self.loss_exp = k.mean(k.binary_crossentropy(self.y_target, self.output_exp))
         self.loss_remain = k.mean(
             k.binary_crossentropy(self.y_target, self.output_remain)
         )
@@ -179,8 +175,7 @@ class OptimizeExp:
                 self.mask_reshaped
             )  # minimize mask
         elif self.regularizer == 'l2':
-            self.loss_reg_mask = tf.sqrt(
-                tf.reduce_sum(tf.square(self.mask_reshaped)))
+            self.loss_reg_mask = tf.sqrt(tf.reduce_sum(tf.square(self.mask_reshaped)))
         else:
             self.loss_reg_mask = tf.constant(0)
 
@@ -195,8 +190,7 @@ class OptimizeExp:
 
         # training function
         with tf.variable_scope('opt', reuse=tf.AUTO_REUSE):
-            self.train_op = self.optimizer.minimize(
-                self.loss, var_list=self.var_train)
+            self.train_op = self.optimizer.minimize(self.loss, var_list=self.var_train)
 
     def fit_local(  # noqa: C901
         self,
@@ -366,8 +360,7 @@ class OptimizeExp:
                     # loss_sparse_mask: minimize mask
 
                     if loss_best > loss or loss_sparse_mask_best > loss_sparse_mask:
-                        logging.debug(
-                            f'updating best loss from {loss_best} to {loss}')
+                        logging.debug(f'updating best loss from {loss_best} to {loss}')
                         logging.debug(
                             f'updating best sparse mask loss from {loss_sparse_mask_best} to {loss_sparse_mask}'  # noqa: E501
                         )

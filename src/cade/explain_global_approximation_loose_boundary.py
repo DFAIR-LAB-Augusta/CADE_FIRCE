@@ -93,8 +93,7 @@ def explain_drift_samples_per_instance(
     mad_threshold: float = config.mad_threshold
 
     cae_dims = utils.get_model_dims(
-        'Contrastive AE', x_train.shape[1], config.cae_hidden, len(
-            np.unique(y_train))
+        'Contrastive AE', x_train.shape[1], config.cae_hidden, len(np.unique(y_train))
     )
 
     # load CAE encoder
@@ -180,8 +179,7 @@ def get_drift_samples_to_explain(
     pattern = re.compile(r'best inspection count: \d+')
     with open(one_by_one_check_result_path) as f:
         inspect_cnt = int(
-            re.findall(pattern, f.read())[0].replace(
-                'best inspection count: ', '')
+            re.findall(pattern, f.read())[0].replace('best inspection count: ', '')
         )
 
     drift_samples_idx_list, drift_samples_real_labels, drift_samples_closest = (
@@ -477,8 +475,7 @@ def get_in_and_out_distribution_samples(
     logging.debug(
         f'training set drift ratio: {len(all_out_distribution) / len(z_closest_family):.3f}'  # noqa: E501
     )
-    logging.debug(
-        f'X_train_family_in_dist.shape: {x_train_family_in_dist.shape}')
+    logging.debug(f'X_train_family_in_dist.shape: {x_train_family_in_dist.shape}')
 
     return all_in_distribution, all_out_distribution, x_train_family_in_dist
 
@@ -718,8 +715,7 @@ def combine_encoder_and_approximation_model(
         x2 = Dense(mlp_dims[i + 1], activation='relu', name=f'clf_{i}')(x2)
         if dropout_ratio > 0:
             x2 = Dropout(dropout_ratio, seed=42)(x2)
-    data = Dense(mlp_dims[-1], activation='softmax',
-                 name=f'clf_{clf_stacks - 1}')(x2)
+    data = Dense(mlp_dims[-1], activation='softmax', name=f'clf_{clf_stacks - 1}')(x2)
 
     final_model = Model(inputs=input_, outputs=data)
     final_model.load_weights(cae_weights_path, by_name=True)

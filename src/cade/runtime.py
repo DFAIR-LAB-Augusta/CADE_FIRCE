@@ -41,36 +41,34 @@ class CadeRuntimeDetector:
         lr: float = 1e-3,
         display_interval: int = 10,
         weights_path: str | None = None,
-        device: str = "/CPU:0",
+        device: str = '/CPU:0',
         *,
         force_retrain: bool = False,
     ) -> None:
         if len(dims) < 2:
-            raise ValueError(
-                "dims must contain at least input and latent dimensions."
-            )
+            raise ValueError('dims must contain at least input and latent dimensions.')
         if any(v <= 0 for v in dims):
-            raise ValueError("All dims entries must be positive.")
+            raise ValueError('All dims entries must be positive.')
         if margin < 0:
-            raise ValueError("margin must be non-negative.")
+            raise ValueError('margin must be non-negative.')
         if mad_threshold < 0:
-            raise ValueError("mad_threshold must be non-negative.")
+            raise ValueError('mad_threshold must be non-negative.')
         if not (0.0 <= min_drift_ratio <= 1.0):
-            raise ValueError("min_drift_ratio must be in [0, 1].")
+            raise ValueError('min_drift_ratio must be in [0, 1].')
         if min_drift_count < 1:
-            raise ValueError("min_drift_count must be >= 1.")
+            raise ValueError('min_drift_count must be >= 1.')
         if cae_lambda_1 < 0:
-            raise ValueError("cae_lambda_1 must be non-negative.")
+            raise ValueError('cae_lambda_1 must be non-negative.')
         if not (0.0 <= similar_ratio <= 1.0):
-            raise ValueError("similar_ratio must be in [0, 1].")
+            raise ValueError('similar_ratio must be in [0, 1].')
         if batch_size < 4 or batch_size % 4 != 0:
-            raise ValueError("batch_size must be a multiple of 4 and >= 4.")
+            raise ValueError('batch_size must be a multiple of 4 and >= 4.')
         if epochs < 1:
-            raise ValueError("epochs must be >= 1.")
+            raise ValueError('epochs must be >= 1.')
         if lr <= 0:
-            raise ValueError("lr must be > 0.")
+            raise ValueError('lr must be > 0.')
         if display_interval < 1:
-            raise ValueError("display_interval must be >= 1.")
+            raise ValueError('display_interval must be >= 1.')
 
         self.dims = dims
         self.margin = margin
@@ -87,8 +85,8 @@ class CadeRuntimeDetector:
         self.force_retrain = force_retrain
         self.device = device
         if weights_path is None:
-            tmp_dir = Path(tempfile.mkdtemp(prefix="cade_runtime_"))
-            self.weights_path = str(tmp_dir / "cae.weights.h5")
+            tmp_dir = Path(tempfile.mkdtemp(prefix='cade_runtime_'))
+            self.weights_path = str(tmp_dir / 'cae.weights.h5')
         else:
             self.weights_path = weights_path
 
@@ -127,26 +125,23 @@ class CadeRuntimeDetector:
         y_train = np.asarray(y_train)
 
         if x_train.ndim != 2:
-            raise ValueError("x_train must be a 2D array.")
+            raise ValueError('x_train must be a 2D array.')
         if y_train.ndim != 1:
-            raise ValueError("y_train must be a 1D array.")
+            raise ValueError('y_train must be a 1D array.')
         if len(x_train) != len(y_train):
-            raise ValueError("x_train and y_train must have the same length.")
+            raise ValueError('x_train and y_train must have the same length.')
         if x_train.shape[1] != self.dims[0]:
             raise ValueError(
-                f"x_train has {x_train.shape[1]} features, "
-                f"but dims[0] is {self.dims[0]}."
+                f'x_train has {x_train.shape[1]} features, '
+                f'but dims[0] is {self.dims[0]}.'
             )
 
         classes = np.unique(y_train)
         class_to_idx = {label: idx for idx, label in enumerate(classes)}
-        y_encoded = np.asarray([class_to_idx[v]
-                               for v in y_train], dtype=np.int32)
+        y_encoded = np.asarray([class_to_idx[v] for v in y_train], dtype=np.int32)
 
         if len(classes) < 2:
-            raise ValueError(
-                "CADE requires at least 2 classes in training data."
-            )
+            raise ValueError('CADE requires at least 2 classes in training data.')
 
         self.classes_ = classes
         self.class_to_idx_ = class_to_idx
@@ -177,7 +172,8 @@ class CadeRuntimeDetector:
         z_family = [z_train[y_encoded == idx] for idx in range(len(classes))]
         if any(len(z) == 0 for z in z_family):
             raise RuntimeError(
-                "One or more classes had no latent samples after encoding.")
+                'One or more classes had no latent samples after encoding.'
+            )
 
         # Per-class centroids
         centroids = np.asarray(
@@ -191,8 +187,7 @@ class CadeRuntimeDetector:
         mad_distances: list[float] = []
 
         for idx, z_group in enumerate(z_family):
-            dists = np.linalg.norm(
-                z_group - centroids[idx], axis=1).astype(np.float64)
+            dists = np.linalg.norm(z_group - centroids[idx], axis=1).astype(np.float64)
             distance_lists.append(dists)
 
             med = float(np.median(dists))
@@ -227,18 +222,18 @@ class CadeRuntimeDetector:
         x = np.asarray(x, dtype=np.float32)
 
         if x.ndim != 2:
-            raise ValueError("x must be a 2D array.")
+            raise ValueError('x must be a 2D array.')
         if x.shape[1] != self.dims[0]:
             raise ValueError(
-                f"x has {x.shape[1]} features, but dims[0] is {self.dims[0]}."
+                f'x has {x.shape[1]} features, but dims[0] is {self.dims[0]}.'
             )
 
         if self.centroids_ is None:
-            raise RuntimeError(
-                "centroids_ missing; detector is not properly fitted.")
+            raise RuntimeError('centroids_ missing; detector is not properly fitted.')
         if self.median_distances_ is None or self.mad_distances_ is None:
             raise RuntimeError(
-                "distance statistics missing; detector is not properly fitted.")
+                'distance statistics missing; detector is not properly fitted.'
+            )
 
         with tf.device(self.device):
             z = self._encode(x)  # (n_samples, latent_dim)
@@ -251,19 +246,19 @@ class CadeRuntimeDetector:
 
         # CADE anomaly score per class:
         # |distance - class_median_distance| / class_mad
-        anomalies = np.abs(
-            distances - self.median_distances_[None, :]
-        ) / self.mad_distances_[None, :]
+        anomalies = (
+            np.abs(distances - self.median_distances_[None, :])
+            / self.mad_distances_[None, :]
+        )
 
         closest_classes = np.argmin(distances, axis=1).astype(np.int32)
         min_scores = np.min(anomalies, axis=1).astype(np.float64)
-        row_flags = (min_scores > self.mad_threshold)
+        row_flags = min_scores > self.mad_threshold
 
         drift_count = int(row_flags.sum())
         drift_ratio = float(row_flags.mean()) if len(row_flags) else 0.0
         chunk_drift = (
-            drift_count >= self.min_drift_count
-            or drift_ratio >= self.min_drift_ratio
+            drift_count >= self.min_drift_count or drift_ratio >= self.min_drift_ratio
         )
 
         return CadeDetectionOutput(
@@ -283,13 +278,11 @@ class CadeRuntimeDetector:
     def _encode(self, x: np.ndarray) -> np.ndarray:
         """Encode features into latent space."""
         if self.encoder_ is None:
-            raise RuntimeError("encoder_ is not initialized.")
+            raise RuntimeError('encoder_ is not initialized.')
         z = self.encoder_.predict(x, verbose=str(0))
         return np.asarray(z, dtype=np.float32)
 
     def _require_fitted(self) -> None:
         """Raise if detect() is called before fit()."""
         if not self._is_fitted:
-            raise RuntimeError(
-                "CadeRuntimeDetector must be fitted before detect()."
-            )
+            raise RuntimeError('CadeRuntimeDetector must be fitted before detect().')

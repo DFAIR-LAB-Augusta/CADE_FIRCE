@@ -182,8 +182,7 @@ class OptimizeExp:
             self.p_normalized = tf.sigmoid(self.p)
         elif self.normalize_choice == 'tanh':
             logging.debug('Using tanh normalization.')
-            self.p_normalized = (tf.tanh(self.p + 1)) / \
-                (2 + tf.keras.backend.epsilon())
+            self.p_normalized = (tf.tanh(self.p + 1)) / (2 + tf.keras.backend.epsilon())
         else:
             logging.debug('Using clip normalization.')
             self.p_normalized = tf.minimum(1.0, tf.maximum(self.p, 0.0))
@@ -199,8 +198,7 @@ class OptimizeExp:
 
         # get input and reverse input.
         self.input = self.model.get_input_at(0)
-        self.reverse_x = tf.placeholder(
-            tf.float32, shape=(None, mask_shape[0]))
+        self.reverse_x = tf.placeholder(tf.float32, shape=(None, mask_shape[0]))
 
         self.m1 = tf.placeholder(tf.float32, shape=mask_shape)
         self.reverse_mask = tf.ones_like(self.mask) - self.mask * self.m1
@@ -213,13 +211,11 @@ class OptimizeExp:
 
         # l2 norm distance.
         self.loss_exp = tf.reduce_mean(
-            tf.sqrt(tf.reduce_sum(
-                tf.square(self.output_exp - self.centroid), axis=1))
+            tf.sqrt(tf.reduce_sum(tf.square(self.output_exp - self.centroid), axis=1))
         )
 
         if self.regularizer == 'l1':
-            self.loss_reg_mask = tf.reduce_sum(
-                tf.abs(self.p_normalized * self.m1))
+            self.loss_reg_mask = tf.reduce_sum(tf.abs(self.p_normalized * self.m1))
         elif self.regularizer == 'elasticnet':
             self.loss_reg_mask = self.elasticnet_loss(
                 self.p_normalized * self.m1
@@ -238,8 +234,7 @@ class OptimizeExp:
 
         # training function
         with tf.variable_scope('opt', reuse=tf.AUTO_REUSE):
-            self.train_op = self.optimizer.minimize(
-                self.loss, var_list=self.var_train)
+            self.train_op = self.optimizer.minimize(self.loss, var_list=self.var_train)
 
     def fit_local(  # noqa: C901
         self,
@@ -290,8 +285,7 @@ class OptimizeExp:
         # swap a small number of features from the target drift sample to synthesize new drift sample,  # noqa: E501
         # so we can have more drift samples for the concrete distribution gumbel trick.
         sync_idx = np.random.choice(x.shape[0], (num_sync, num_changed_fea))
-        sync_x = np.repeat(x[None, :], num_sync, axis=0).reshape(
-            num_sync, x.shape[0])
+        sync_x = np.repeat(x[None, :], num_sync, axis=0).reshape(num_sync, x.shape[0])
         for i in range(num_sync):
             sync_x[i, sync_idx[i]] = 1 - x[sync_idx[i]]
 
@@ -334,7 +328,7 @@ class OptimizeExp:
                     feed_dict = {
                         self.input: input_[
                             idx[
-                                i * self.batch_size: min(
+                                i * self.batch_size : min(
                                     (i + 1) * self.batch_size, input_.shape[0]
                                 )
                             ],
@@ -356,8 +350,7 @@ class OptimizeExp:
 
                 loss = sum(loss_tmp) / len(loss_tmp)
                 loss_exp = sum(loss_exp_tmp) / len(loss_exp_tmp)
-                loss_sparse_mask = sum(
-                    loss_sparse_mask_tmp) / len(loss_sparse_mask_tmp)
+                loss_sparse_mask = sum(loss_sparse_mask_tmp) / len(loss_sparse_mask_tmp)
 
                 if loss_exp <= exp_loss_lowerbound:
                     lambda_up_counter += 1
@@ -392,8 +385,7 @@ class OptimizeExp:
                         sess.run(self.mask.assign(mask))
 
                     if loss_best > loss or loss_sparse_mask_best > loss_sparse_mask:
-                        logging.debug(
-                            f'updating best loss from {loss_best} to {loss}')
+                        logging.debug(f'updating best loss from {loss_best} to {loss}')
                         logging.debug(
                             f'updating best sparse mask loss from {loss_sparse_mask_best} to {loss_sparse_mask}'  # noqa: E501
                         )
