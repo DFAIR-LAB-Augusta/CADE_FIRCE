@@ -10,10 +10,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        python-version: ["3.11"]
+        include:
+          - runner: [self-hosted, linux, x64, dfair-gha-runner]
+            python-version: "3.11"
+          - runner: macos-latest
+            python-version: "3.11"
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - name: Checkout
