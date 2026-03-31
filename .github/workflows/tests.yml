@@ -14,9 +14,11 @@ jobs:
           - runner: [self-hosted, linux, x64, dfair-gha-runner]
             python-version: "3.11"
             use_setup_python: false
+            uv_groups: "--group dev --group tf-deb"
           - runner: macos-latest
             python-version: "3.11"
             use_setup_python: true
+            uv_groups: "--group dev --group tf"
 
     runs-on: ${{ matrix.runner }}
 
@@ -48,7 +50,7 @@ jobs:
           fi
 
       - name: Sync dependencies
-        run: uv sync --python ${{ matrix.python-version }}
+        run: uv sync --python ${{ matrix.python-version }} ${{ matrix.uv_groups }}
 
       - name: Run tests
         env:
