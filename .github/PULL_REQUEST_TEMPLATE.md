@@ -9,9 +9,9 @@ Why is this change needed?
 - [ ]
 
 ## Testing
-- [ ] `uv run pytest`
-- [ ] `uv run ruff check .`
-- [ ] `uv run ruff format --check .`
+- [ ] `make lint`
+- [ ] `make test`
+- [ ] `make preflight`
 
 ## Notes on Upstream Compatibility / Attribution
 - [ ] This change preserves upstream attribution and licensing
