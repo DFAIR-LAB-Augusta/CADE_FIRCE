@@ -26,30 +26,26 @@ help: ## Show available targets
 lock: ## Resolve + write uv.lock
 	$(UV) lock
 
-sync: ## Sync env (installs dev dependency group by default)
+sync: ## Sync env 
 	$(UV) sync
 
-sync-prod: ## Sync env without dev dependencies (production-ish)
+sync.prod: ## Sync env without dev dependencies
 	$(UV) sync --no-dev
 
-sync-tf: ## Sync env with TensorFlow extra (platform-specific via markers)
-	$(UV) sync --extra tf
+sync.script: ## Sync env with scripting extra
+	$(UV) sync --group scripting
 
-sync-all: ## Sync env with all optional extras enabled
+sync.all: ## Sync env with all optional extras enabled
 	$(UV) sync --all-extras
 
-run: ## Run main entrypoint (adjust if you add a proper console script)
+run: ## Run main entrypoint 
 	$(UV) run $(PY) main.py
 
 test: ## Run tests
 	$(UV) run pytest -q
-# 	OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 \
-# 	NUMEXPR_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 
-test-cov: ## Run tests with coverage
+test.cov: ## Run tests with coverage
 	$(UV) run pytest --cov=cade --cov-report=term-missing --cov-report=xml
-# 	OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 \
-# 	NUMEXPR_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 
 lint: ## Lint with ruff and apply safe auto-fixes
 	$(UV) run ruff format .
@@ -67,4 +63,7 @@ build: ## Build sdist/wheel
 	
 preflight: ## Build + run twine metadata checks
 	$(UV) build
-	uvx twine check dist/*
+	uv run twine check dist/*
+
+deps.check: ## Check for dependency issues
+	uv run deptry .
