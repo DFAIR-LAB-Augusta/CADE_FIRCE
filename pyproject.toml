@@ -124,3 +124,4 @@ root = ["src"]
 
 [tool.deptry.per_rule_ignores]
 DEP003 = ["cade"]
+DEP004 = ["tensorflow", "keras"]

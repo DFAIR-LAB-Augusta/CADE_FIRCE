@@ -11,6 +11,7 @@ Why is this change needed?
 - [ ] `make lint`
 - [ ] `make test`
 - [ ] `make preflight`
+- [ ] `make deps.check`
 
 ## Notes on Upstream Compatibility / Attribution
 - [ ] This change preserves upstream attribution and licensing
