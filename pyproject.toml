@@ -2,13 +2,26 @@
 requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build]
+skip-excluded-dirs = true
+
 [tool.hatch.build.targets.wheel]
 sources = ["src"]
 packages = ["src/cade"]
+only-packages = true
+
+[tool.hatch.build.targets.sdist]
+only-include = [
+  "src/cade",
+  "tests",
+  "README.md",
+  "LICENSE",
+  "pyproject.toml",
+]
 
 [project]
 name = "cade-firce"
-version = "0.4.0"
+version = "0.4.1"
 description = "Modernized CADE package for concept drift detection, adapted for FIRCE integration."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -60,9 +73,6 @@ dependencies = [
   "tqdm>=4.66",
   "matplotlib>=3.7",
   "seaborn>=0.13",
-  "keras>=3.10,<4",
-  "tensorflow>=2.19,<3; platform_system == 'Darwin'",
-  "tensorflow[and-cuda]==2.19.1; platform_system == 'Linux'",
 ]
 
 [project.urls]
@@ -89,9 +99,14 @@ scripting = [
   "pyyaml>=6.0",
 ]
 
+tensorflow = [
+  "keras>=3.10,<4",
+  "tensorflow[and-cuda]==2.19.1; sys_platform == 'linux'",
+  "tensorflow==2.19.1; sys_platform == 'darwin'",
+]
+
 [project.scripts]
 cade-main = "cade.cli:main"
-cade-clean = "scripts.data_prep.clean_data:main" # requires adding a main() to clean_data
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -109,3 +124,4 @@ root = ["src"]
 
 [tool.deptry.per_rule_ignores]
 DEP003 = ["cade"]
+DEP004 = ["tensorflow", "keras"]
