@@ -46,7 +46,7 @@ jobs:
           if [ "${{ matrix.use_setup_python }}" = "true" ]; then
             python --version
           else
-            uv run --python ${{ matrix.python-version }} python --version
+            uv python list 3.11
           fi
 
       - name: Sync dependencies
