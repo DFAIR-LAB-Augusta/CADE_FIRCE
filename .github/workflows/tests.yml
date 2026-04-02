@@ -14,11 +14,11 @@ jobs:
           - runner: [self-hosted, linux, x64, dfair-gha-runner]
             python-version: "3.11"
             use_setup_python: false
-            uv_groups: "--group dev"
+            uv_groups: "--group tensorflow --group dev"
           - runner: macos-latest
             python-version: "3.11"
             use_setup_python: true
-            uv_groups: "--group dev"
+            uv_groups: "--group tensorflow --group dev"
 
     runs-on: ${{ matrix.runner }}
 
