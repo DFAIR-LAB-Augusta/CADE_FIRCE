@@ -1,222 +1,320 @@
-# CADE: Contrastive Autoencoder for Drifting detection and Explanation
+# CADE-FIRCE
 
-The repository contains the code for detecting and explaining a specific type of concept drift (i.e., previously unseen families) in security applications like malware attribution and network intrusion classification.
+Modernized CADE for concept drift detection in reusable Python workflows.
 
-Further details can be found in the paper "*CADE: Detecting and Explaining Concept Drift Samples for Security Applications*" by Limin Yang, Wenbo Guo, Qingying Hao, Arridhana Ciptadi, Ali Ahmadzadeh, Xinyu Xing, Gang Wang (USENIX Security 2021). We also include supplemental materials in the repo (`USENIX_21_drifting_Supplementary_Materials.pdf`) due to page limit.   Check out http://liminyang.web.illinois.edu for up-to-date information on the project.
+This package adapts the original CADE codebase from the USENIX Security 2021 paper into a library-oriented Python package for integration into other systems. In particular, it provides a runtime detector API that can be used inside streaming pipelines, evaluation frameworks, and drift monitoring components rather than only through the original experimental scripts. :contentReference[oaicite:2]{index=2} :contentReference[oaicite:3]{index=3}
 
-If you end up building on this research or code as part of a project or publication, please include a reference to the USENIX Security paper:
-```
+## What this fork adds
+
+This fork keeps the core CADE idea intact while updating the codebase for modern Python packaging and programmatic use.
+
+Key changes include:
+
+- packaging through `pyproject.toml`
+- modern dependency management with `uv`
+- a runtime-facing detector class, `CadeRuntimeDetector`
+- a clearer fit and detect workflow for integration into other projects
+- improved validation and runtime checks for detector configuration and input data shapes
+
+The main entry point for integration is `cade.runtime.CadeRuntimeDetector`, which exposes a direct library API for training on reference data and then scoring incoming batches for drift. :contentReference[oaicite:4]{index=4}
+
+## Background
+
+CADE, short for Contrastive Autoencoder for Drift Detection and Explanation, was introduced in:
+
+Limin Yang, Wenbo Guo, Qingying Hao, Arridhana Ciptadi, Ali Ahmadzadeh, Xinyu Xing, and Gang Wang.  
+**CADE: Detecting and Explaining Concept Drift Samples for Security Applications.**  
+USENIX Security 2021. :contentReference[oaicite:5]{index=5}
+
+The original work targets a specific form of concept drift in security settings, especially cases where new samples no longer align well with previously learned class structure. This fork focuses on making that detector easier to embed in downstream systems.
+
+If you build on this package in a project or publication, please cite the original CADE paper.
+
+```bibtex
 @inproceedings{yang2021cade,
-    title = {CADE: Detecting and Explaining Concept Drift Samples for Security Applications},
-    author = {Yang, Limin and Guo, Wenbo and Hao, Qingying and Ciptadi, Arridhana and Ahmadzadeh, Ali and Xing, Xinyu and Wang, Gang},
-    booktitle = {Proc. of USENIX Security},
-    year = {2021}
+  title={$\{$CADE$\}$: Detecting and explaining concept drift samples for security applications},
+  author={Yang, Limin and Guo, Wenbo and Hao, Qingying and Ciptadi, Arridhana and Ahmadzadeh, Ali and Xing, Xinyu and Wang, Gang},
+  booktitle={30th USENIX Security Symposium (USENIX Security 21)},
+  pages={2327--2344},
+  year={2021}
 }
 ```
 
-## 1. Installation
+## Installation
 
-Before getting started we recommend setting up a Python 3.6.5 or 3.6.8 virtual environment (other Python 3.6 or above versions might also work but didn't test).
+This project uses `uv` for environment and dependency management.
 
-* If you are using CPU-based tensorflow, install all required packages:
-
-  ```bash
-  pip install -r requirements-tensorflow-cpu.txt
-  python setup.py install
-  ```
-
-* If you are using GPU-based tensorflow, please try the following steps to setup:
-
-  ```bash
-  module load cuda-toolkit/9.0  # other versions might also work but didn't test
-  # you may also try pyenv and virtualenv to create the virtual environment, here we use Anaconda
-  conda create -n cade-gpu python=3.6.8
-  conda activate cade-gpu
-  pip install scipy==1.3.3
-  pip install numpy==1.16.1
-  pip install --ignore-installed tensorflow-gpu==1.12.0
-  pip install keras==2.2.5
-  pip install sklearn==0.23.2
-  pip install matplotlib==3.1.2
-  pip install seaborn==0.11.0
-  pip install tqdm==4.49.0
-  python setup.py install
-  ```
-
-
-
-
-
-## 2. Configuration
-
-The preprocessed Drebin and IDS2018 dataset can be found under the `data` folder. If you prefer to modify the preprocessing step, you may download the original dataset here: https://www.sec.cs.tu-bs.de/~danarp/drebin/index.html and https://www.unb.ca/cic/datasets/ids-2018.html and fill out the configuration in `cade/config.py`.
-
-
-
-
-
-## 3. Usage
-
-There are a number of command line arguments to run our program:
+Clone the repository, then sync dependencies:
 
 ```bash
-$ python main.py -h
-usage: main.py [-h] [--data DATA] [-c {mlp,rf}] [--stage {detect,explanation}]
-               [--pure-ae {0,1}] [--quiet {0,1}] [--cae-hidden CAE_HIDDEN]
-               [--cae-batch-size CAE_BATCH_SIZE] [--cae-lr CAE_LR]
-               [--cae-epochs CAE_EPOCHS] [--cae-lambda-1 CAE_LAMBDA_1]
-               [--similar-ratio SIMILAR_RATIO] [--margin MARGIN]
-               [--display-interval DISPLAY_INTERVAL]
-               [--mad-threshold MAD_THRESHOLD]
-               [--exp-method {distance_mm1,approximation_loose}]
-               [--exp-lambda-1 EXP_LAMBDA_1] [--mlp-retrain {0,1}]
-               [--mlp-hidden MLP_HIDDEN] [--mlp-batch-size MLP_BATCH_SIZE]
-               [--mlp-lr MLP_LR] [--mlp-epochs MLP_EPOCHS]
-               [--mlp-dropout MLP_DROPOUT] [--newfamily-label NEWFAMILY_LABEL]
-               [--tree TREE] [--rf-retrain {0,1}]
+uv sync
 ```
 
-See `cade/utils.py` or run `python main.py -h` for detailed help. You may also check `run_drebin_cade.sh` for a bunch of examples.
+For development dependencies:
+
+```bash
+uv sync --group dev
+```
+
+For scripting helpers:
+
+```bash
+uv sync --group scripting
+```
+
+To install all configured dependency groups:
+
+```bash
+uv sync --all-groups
+```
+
+## Development workflow
+
+Common development commands:
+
+```bash
+uv lock
+uv sync
+uv run pytest -q
+uv run pytest --cov=cade --cov-report=term-missing --cov-report=xml
+uv run ruff format .
+uv run ruff check .
+uv run ruff check . --fix
+uv build
+uv run twine check dist/*
+uv run deptry .
+```
+
+If you use the included `Makefile`, these commands are wrapped in targets such as `make sync`, `make test`, `make lint`, and `make build`.
+
+## Runtime drift detection
+
+The primary integration surface is `CadeRuntimeDetector`.
+
+It is designed for the common pattern:
+
+1. Fit the detector on known reference data
+2. Encode incoming samples into CADE's latent space
+3. Measure distance to learned class centroids
+4. Compute robust anomaly scores using per-class median and MAD statistics
+5. Flag row-level drift and summarize chunk-level drift status 
+
+### Detector behavior
+
+After `fit`, the detector stores:
+
+* the observed training classes
+* a label-to-index mapping
+* latent centroids for each class
+* per-class median distances
+* per-class MAD-scaled distance statistics
+* the trained encoder model  
+
+During `detect(x)`, the detector:
+
+* validates the input batch
+* encodes each row into latent space
+* computes distance from each encoded row to every class centroid
+* converts those distances into anomaly scores
+* marks a row as drifted if its minimum anomaly score exceeds `mad_threshold`
+* marks the chunk as drifted if drift count or drift ratio exceeds configured thresholds 
+
+This makes the detector useful both for per-row inspection and for higher-level monitoring decisions.
+
+## Basic example
+
+A minimal runtime example looks like this:
+
+```python
+from __future__ import annotations
+
+import numpy as np
+
+from cade.runtime import CadeRuntimeDetector
+
+X_train = np.random.rand(1000, 32).astype(np.float32)
+y_train = np.random.randint(0, 3, size=1000)
+
+X_chunk = np.random.rand(128, 32).astype(np.float32)
+
+detector = CadeRuntimeDetector(
+    dims=[32, 64, 16],
+    margin=10.0,
+    mad_threshold=3.5,
+    min_drift_ratio=0.05,
+    min_drift_count=1,
+    batch_size=64,
+    epochs=25,
+    lr=1e-3,
+)
+
+detector.fit(X_train, y_train)
+out = detector.detect(X_chunk)
+
+print("Chunk drift:", out.chunk_drift)
+print("Drifted rows:", int(out.row_flags.sum()))
+print("Scores shape:", out.scores.shape)
+```
+
+The returned object contains:
+
+* `row_flags`: boolean drift flags for each row
+* `scores`: per-row anomaly scores
+* `closest_classes`: nearest learned class for each row
+* `chunk_drift`: overall chunk-level drift decision  
+
+## Integration example in a monitoring pipeline
+
+One intended use of this package is wrapping the runtime detector inside a project-specific monitoring interface. For example, a monitoring component can fit CADE on training data and then translate CADE output into a framework-specific drift result object:
+
+```python
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+from cade.runtime import CadeRuntimeDetector
+
+from firce.drift_monitor.base import DriftDetectionResult
+
+from .cade_config import CadeMonitorConfig
+
+if TYPE_CHECKING:
+    from firce.utils.config import SimulationConfig
+    from firce.utils.perf_stats import PerformanceStats
 
 
+class CadeDriftMonitor:
+    def __init__(self, config: SimulationConfig) -> None:
+        cade_cfg = CadeMonitorConfig(**config.monitor_kwargs)
 
+        self._detector = CadeRuntimeDetector(
+            dims=cade_cfg.dims,
+            margin=cade_cfg.margin,
+            mad_threshold=cade_cfg.mad_threshold,
+            min_drift_ratio=cade_cfg.min_drift_ratio,
+            min_drift_count=cade_cfg.min_drift_count,
+            batch_size=cade_cfg.batch_size,
+            epochs=cade_cfg.epochs,
+            lr=cade_cfg.lr,
+            cae_lambda_1=cade_cfg.cae_lambda_1,
+            similar_ratio=cade_cfg.similar_ratio,
+            display_interval=cade_cfg.display_interval,
+            force_retrain=cade_cfg.force_retrain,
+            weights_path=cade_cfg.weights_path,
+            device=cade_cfg.device,
+        )
 
+    def fit(
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        perf_stats: PerformanceStats | None = None,
+    ) -> None:
+        self._detector.fit(X_train, y_train)
 
-## 4. Examples
+    def detect(self, X: np.ndarray) -> DriftDetectionResult:
+        out = self._detector.detect(X)
+        row_flags = np.asarray(out.row_flags, dtype=bool).reshape(-1)
+        scores = np.asarray(out.scores, dtype=float).reshape(-1)
 
-### 4.1 Drift detection
+        return DriftDetectionResult(
+            row_flags=row_flags,
+            chunk_drift=bool(row_flags.any()),
+            scores=scores,
+            metadata={
+                "drift_count": int(row_flags.sum()),
+                "chunk_size": int(len(row_flags)),
+                "drift_ratio": float(row_flags.mean()) if len(row_flags) else 0.0,
+            },
+        )
+```
 
-1. To get the detection performance of CADE on the Drebin dataset (iteratively choose one family from 8 families as the unseen family):
+This pattern is useful when CADE is one detector among several, or when a larger framework expects a standard drift-monitor interface.
 
-   ```bash
-   ./run_drebin_cade.sh
+## API notes
 
-   # After the shell script finished running
-   python -u average_all_detection_results.py drebin 0
-   # 0 means using CADE, while 1 means using Vanilla AE
-   ```
+### `CadeRuntimeDetector(...)`
 
-2. To get the detection performance of CADE on the IDS2018 dataset (iteratively choose one family from 3 families as the unseen family):
+Important configuration parameters include:
 
-   ```bash
-   ./run_ids_cade.sh
+* `dims`: network dimensions, including input and latent dimensions
+* `margin`: contrastive margin used during training
+* `mad_threshold`: row-level anomaly threshold
+* `min_drift_ratio`: chunk-level ratio threshold
+* `min_drift_count`: chunk-level count threshold
+* `batch_size`: training batch size
+* `epochs`: number of training epochs
+* `lr`: optimizer learning rate
+* `cae_lambda_1`: CAE training weight
+* `similar_ratio`: ratio used for similar-pair construction
+* `display_interval`: training log interval
+* `weights_path`: optional saved weights path
+* `device`: TensorFlow device string such as `/CPU:0`
+* `force_retrain`: whether to discard an existing weights file before training 
 
-   # After the shell script finished running
-   python -u average_all_detection_results.py IDS 0
-   ```
+### `fit(x_train, y_train)`
 
-3. To get the detection performance of Vanilla Autoencoder on the Drebin dataset:
+Fits the detector on labeled reference data. Input requirements:
 
-   ```bash
-   ./run_drebin_pure_ae.sh
+* `x_train` must be a 2D array
+* `y_train` must be a 1D array
+* lengths must match
+* `x_train.shape[1]` must equal `dims[0]`
+* at least two classes must be present in training data 
 
-   # After the shell script finished running
-   python -u average_all_detection_results.py drebin 1
-   ```
+### `detect(x)`
 
-4. To get the detection performance of Vanilla Autoencoder on the IDS2018 dataset:
+Scores a batch for drift. Input requirements:
 
-   ```bash
-   ./run_ids_pure_ae.sh
+* `x` must be a 2D array
+* `x.shape[1]` must equal `dims[0]`
+* the detector must already be fitted 
 
-   # After the shell script finished running
-   python -u average_all_detection_results.py IDS 1
-   ```
+## When to use this package
 
+This package is a good fit when you need:
 
+* a drift detector that can be embedded directly into Python systems
+* row-level drift flags and continuous anomaly scores
+* chunk-level drift decisions based on configurable thresholds
+* a detector that learns class structure in a latent space rather than relying only on raw-feature distances
 
-### 4.2 Drift explanation
+It is especially useful in workflows where training data represents known classes and incoming data may contain new or shifted patterns that no longer fit those learned latent distributions.
 
-1. CADE explaining drift samples on the Drebin-Fakedoc setting (i.e., drebin_new_7):
+## Project status
 
-   ```bash
-   ./run_cade_exp_drebin_fakedoc.sh
-   # It will generate reports/drebin_new_7/mask_distance_mm1_0.001.npz,
-   # which is already provided.
-   # This step is time-consuming and non-deterministic,
-   # so we include the explanation output for saving reproduction time and easier comparison.
-   ```
+This package is a maintained downstream adaptation of the original CADE research code. It is intended to make CADE easier to use in modern Python environments and in integration-heavy projects such as evaluation pipelines, security tooling, and drift monitoring frameworks.
 
-2. CADE explaining drift samples on the IDS2018-Infiltration setting:
+It should not be treated as the official upstream release.
 
-   ```bash
-   ./run_cade_exp_ids_infiltration.sh
-   # It will generate reports/IDS_new_Infilteration/mask_distance_mm1_0.001.npz,
-   # which is already provided.
-   ```
+## Attribution
 
-3. Boundary-based explanation on the Drebin-Fakedoc setting:
+This package is derived from the original CADE codebase and research work by:
 
-   ```bash
-   ./run_boundary_exp_drebin_fakedoc.sh
-   # It will generate reports/drebin_new_7/mask_approximation_loose_0.001.npz,
-   # which is already provided.
-   ```
+* Limin Yang
+* Wenbo Guo
+* Qingying Hao
+* Arridhana Ciptadi
+* Ali Ahmadzadeh
+* Xinyu Xing
+* Gang Wang 
 
-4. Boundary-based explanation on the IDS2018-Infiltration setting:
+If you use this fork, please credit both:
 
-   ```bash
-   ./run_boundary_exp_ids_infiltration.sh
-   # It will generate reports/IDS_new_Infilteration/mask_approximation_loose_0.001.npz,
-   # which is already provided.
-   ```
+1. the original CADE paper for the research contribution
+2. this package or repository for packaging and runtime integration work, where appropriate
 
-5. Compare CADE with boundary-based explanation and random explanation (using distance as the evaluation metric)
+## License
 
-   1. Drebin-FakeDoc
+This repository retains the original CADE licensing terms.
 
-   ```bash
-   # 1. To get original distance and CADE distance
-   python -u evaluate_explanation_by_distance.py drebin_new_7 distance_mm1 0.001 1 0.1
+For ethical considerations, the code and data are covered by a modified BSD 3-Clause style license that restricts use to non-commercial scientific research and non-commercial education. Commercial use is prohibited. 
 
-   # 2. To get random explanation distance
-   python -u evaluate_explanation_by_distance.py drebin_new_7 random 0.001 0 0.1
-   # since we randomly run 100 times, there might be minor difference on the output.
+Please review the `LICENSE` file before redistribution or use.
 
-   # 3. To get boundary-based explanation distance
-   python -u evaluate_explanation_by_distance.py drebin_new_7 approximation_loose 0.001 0 0.1
+## Repository links
 
-   # 4. To get gradient-based explanation distance
-   nohup python -u evaluate_explanation_by_distance.py drebin_new_7 gradient 0.001 0 0.1 \
-   > logs/nohup-drebin_new_7-gradient-exp.log &
-   ```
-
-   2. IDS2018-Infiltration
-
-   ```bash
-   # 1. To get original distance and CADE distance
-   nohup python -u evaluate_explanation_by_distance.py IDS_new_Infilteration distance_mm1 \
-   0.001 1 0.1 > logs/nohup-IDS-distance-mm1-exp.log &
-
-   # 2. To get random explanation distance
-   nohup python -u evaluate_explanation_by_distance.py IDS_new_Infilteration random \
-   0.001 0 0.1 > logs/nohup-IDS-random-exp.log &
-   # since we randomly run 100 times, there might be minor difference on the output.
-
-   # 3. To get boundary-based explanation distance
-   nohup python -u evaluate_explanation_by_distance.py IDS_new_Infilteration \
-   approximation_loose 0.001 0 0.1 > logs/nohup-IDS-boundary-exp.log &
-
-   # 4. To get gradient-based explanation distance
-   nohup python -u evaluate_explanation_by_distance.py IDS_new_Infilteration gradient \
-   0.001 0 0.1 > logs/nohup-IDS-gradient-exp.log &
-   ```
-
-
-
-
-
-## 5. Contact
-
-If you have any questions, please contact Limin (liminy2@illinois.edu).
-
-
-
-
-
-## 6. Licensing
-
-For ethical considerations, code and data is covered by a modified BSD 3-Clause License which restricts the use of the code to academic purposes and which specifically prohibits commercial applications.
-
-> Any redistribution or use of this software must be limited to the purposes of non-commercial scientific research or non-commercial education. Any other use, in particular any use for commercial purposes, is prohibited. This includes, without limitation, incorporation in a commercial product, use in a commercial service, or production of other artefacts for commercial purposes.
-
+* Upstream CADE research repository: [`whyisyoung/CADE`](https://github.com/whyisyoung/CADE)
+* This repository: [`DFAIR-LAB-Augusta/CADE_FIRCE`](https://github.com/DFAIR-LAB-Augusta/CADE_FIRCE)
