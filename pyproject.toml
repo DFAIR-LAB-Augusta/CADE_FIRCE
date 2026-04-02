@@ -2,9 +2,22 @@
 requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build]
+skip-excluded-dirs = true
+
 [tool.hatch.build.targets.wheel]
 sources = ["src"]
 packages = ["src/cade"]
+only-packages = true
+
+[tool.hatch.build.targets.sdist]
+only-include = [
+  "src/cade",
+  "tests",
+  "README.md",
+  "LICENSE",
+  "pyproject.toml",
+]
 
 [project]
 name = "cade-firce"
@@ -94,7 +107,6 @@ tensorflow = [
 
 [project.scripts]
 cade-main = "cade.cli:main"
-cade-clean = "scripts.data_prep.clean_data:main" # requires adding a main() to clean_data
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
