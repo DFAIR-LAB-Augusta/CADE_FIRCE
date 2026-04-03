@@ -2,7 +2,7 @@
 
 Modernized CADE for concept drift detection in reusable Python workflows.
 
-This package adapts the original CADE codebase from the USENIX Security 2021 paper into a library-oriented Python package for integration into other systems. In particular, it provides a runtime detector API that can be used inside streaming pipelines, evaluation frameworks, and drift monitoring components rather than only through the original experimental scripts. :contentReference[oaicite:2]{index=2} :contentReference[oaicite:3]{index=3}
+This package adapts the original CADE codebase from the USENIX Security 2021 paper into a library-oriented Python package for integration into other systems. In particular, it provides a runtime detector API that can be used inside streaming pipelines, evaluation frameworks, and drift monitoring components rather than only through the original experimental scripts.
 
 ## What this fork adds
 
@@ -16,7 +16,7 @@ Key changes include:
 - a clearer fit and detect workflow for integration into other projects
 - improved validation and runtime checks for detector configuration and input data shapes
 
-The main entry point for integration is `cade.runtime.CadeRuntimeDetector`, which exposes a direct library API for training on reference data and then scoring incoming batches for drift. :contentReference[oaicite:4]{index=4}
+The main entry point for integration is `cade.runtime.CadeRuntimeDetector`, which exposes a direct library API for training on reference data and then scoring incoming batches for drift.
 
 ## Background
 
@@ -24,7 +24,7 @@ CADE, short for Contrastive Autoencoder for Drift Detection and Explanation, was
 
 Limin Yang, Wenbo Guo, Qingying Hao, Arridhana Ciptadi, Ali Ahmadzadeh, Xinyu Xing, and Gang Wang.  
 **CADE: Detecting and Explaining Concept Drift Samples for Security Applications.**  
-USENIX Security 2021. :contentReference[oaicite:5]{index=5}
+USENIX Security 2021. 
 
 The original work targets a specific form of concept drift in security settings, especially cases where new samples no longer align well with previously learned class structure. This fork focuses on making that detector easier to embed in downstream systems.
 
