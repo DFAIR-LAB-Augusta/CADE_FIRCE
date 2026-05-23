@@ -1,11 +1,13 @@
 ## Summary
-What does this PR change?
 
-## Motivation
-Why is this change needed?
 
 ## Changes
-- 
+- [ ] Fix
+- [ ] Feature
+- [ ] Docs
+- [ ] Refactor
+- [ ] CI
+- [ ] Deps
 
 ## Testing
 - [ ] `make lint`
