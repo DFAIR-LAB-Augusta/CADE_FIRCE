@@ -27,7 +27,7 @@ lock: ## Resolve + write uv.lock
 	$(UV) lock
 
 sync: ## Sync env 
-	$(UV) sync
+	$(UV) sync --group linux
 
 sync.prod: ## Sync env without dev dependencies
 	$(UV) sync --no-dev
